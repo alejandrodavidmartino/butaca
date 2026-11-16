@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+/* Paleta de Butaca: rojo terciopelo de cine sobre fondo oscuro */
+@theme {
+  --color-butaca-50: #fdf2f3;
+  --color-butaca-500: #c81e3a;
+  --color-butaca-600: #a5122b;
+  --color-butaca-700: #7f0e22;
+  --color-sala: #0f0d12;
+  --color-telon: #1b1720;
+  --font-display: "Bebas Neue", system-ui, sans-serif;
+}
+
+body {
+  @apply bg-sala text-zinc-100 antialiased;
+  font-family: "Inter", system-ui, sans-serif;
+}
