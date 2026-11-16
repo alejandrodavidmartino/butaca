@@ -1,23 +1,36 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { Route, Routes } from 'react-router-dom';
+import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
+import Home from './pages/Home';
+import Movies from './pages/Movies';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import MyButaca from './pages/MyButaca';
+import NotFound from './pages/NotFound';
+import AdminDashboard from './admin/AdminDashboard';
 
 export default function App() {
-  const [status, setStatus] = useState('comprobando…');
-
-  useEffect(() => {
-    axios
-      .get('/api/health')
-      .then(({ data }) => setStatus(data.ok ? 'conectado ✅' : 'error'))
-      .catch(() => setStatus('sin conexión ❌'));
-  }, []);
-
   return (
-    <main className="min-h-screen grid place-items-center p-6">
-      <div className="text-center">
-        <h1 className="font-display text-7xl tracking-wide text-butaca-500">Butaca</h1>
-        <p className="mt-2 text-zinc-400">Encuentra tu próxima película</p>
-        <p className="mt-6 text-sm">Backend: {status}</p>
-      </div>
-    </main>
+    <Routes>
+      <Route element={<Layout />}>
+        {/* Rutas públicas */}
+        <Route path="/" element={<Home />} />
+        <Route path="/peliculas" element={<Movies />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/registro" element={<Register />} />
+
+        {/* Solo usuarios registrados */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/mi-butaca" element={<MyButaca />} />
+        </Route>
+
+        {/* Solo administradores */}
+        <Route element={<ProtectedRoute adminOnly />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Route>
+
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
   );
 }
