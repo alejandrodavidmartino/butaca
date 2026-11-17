@@ -10,6 +10,9 @@ import GroupDetail from './pages/GroupDetail';
 import JoinGroup from './pages/JoinGroup';
 import Sommelier from './pages/Sommelier';
 import MyWatched from './pages/MyWatched';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
+import { useAuth } from './context/AuthContext';
 import MovieDetail from './pages/MovieDetail';
 import NotFound from './pages/NotFound';
 import AdminDashboard from './admin/AdminDashboard';
@@ -32,6 +35,9 @@ export default function App() {
           <Route path="/unirse/:code" element={<JoinGroup />} />
           <Route path="/sommelier" element={<Sommelier />} />
           <Route path="/mis-vistas" element={<MyWatched />} />
+          <Route path="/u/:username" element={<Profile />} />
+          <Route path="/perfil" element={<MyProfileRedirect />} />
+          <Route path="/ajustes" element={<Settings />} />
           <Route path="/mi-butaca" element={<Navigate to="/grupos" replace />} />
         </Route>
 
@@ -44,4 +50,10 @@ export default function App() {
       </Route>
     </Routes>
   );
+}
+
+// /perfil -> /u/mi-usuario
+function MyProfileRedirect() {
+  const { user } = useAuth();
+  return <Navigate to={`/u/${user.username}`} replace />;
 }

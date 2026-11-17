@@ -4,8 +4,9 @@ import User from '../models/User.js';
 import { getMovieDetail } from '../services/tmdb.js';
 import { HttpError } from '../utils/httpError.js';
 import { upsertWatched } from './watchedController.js';
+import { parseImageDataUrl, sendImage } from '../utils/image.js';
 
-const USER_FIELDS = 'name username avatar';
+const USER_FIELDS = 'name username avatarVersion';
 
 // Carga un grupo comprobando que existe y que el usuario es miembro
 async function loadGroup(id, userId) {
@@ -268,20 +269,11 @@ export async function uploadImage(req, res) {
   const group = await loadGroup(req.params.id, req.user._id);
   if (!group.isOwner(req.user._id)) throw new HttpError(403, 'Solo el creador puede cambiar la foto del grupo');
 
-  const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body.image || ''));
-  if (!match) throw new HttpError(400, 'La imagen debe ser JPG, PNG o WEBP');
-  const data = Buffer.from(match[2], 'base64');
-  if (data.length > MAX_IMAGE_BYTES) throw new HttpError(413, 'La imagen es demasiado grande');
-
-  // Comprobamos la "firma" real del archivo (no basta con lo que diga el texto "data:image/...")
-  const isJpeg = data[0] === 0xff && data[1] === 0xd8;
-  const isPng = data.subarray(1, 4).toString() === 'PNG';
-  const isWebp = data.subarray(8, 12).toString() === 'WEBP';
-  if (!isJpeg && !isPng && !isWebp) throw new HttpError(400, 'El archivo no es una imagen válida');
+  const { data, contentType } = parseImageDataUrl(req.body.image, MAX_IMAGE_BYTES);
 
   await GroupImage.findOneAndUpdate(
     { group: group._id },
-    { data, contentType: match[1] },
+    { data, contentType },
     { upsert: true, runValidators: true }
   );
   group.imageVersion = Date.now();
@@ -304,8 +296,5 @@ export async function deleteImage(req, res) {
 export async function getImage(req, res) {
   const image = await GroupImage.findOne({ group: req.params.id }).lean();
   if (!image) throw new HttpError(404, 'Este grupo no tiene foto');
-  res.set('Content-Type', image.contentType);
-  // La URL cambia con cada foto nueva (?v=...), así que se puede cachear "para siempre"
-  res.set('Cache-Control', 'public, max-age=31536000, immutable');
-  res.send(image.data.buffer ? Buffer.from(image.data.buffer) : image.data);
+  sendImage(res, image); // con caché larga: la URL cambia con cada foto nueva (?v=...)
 }

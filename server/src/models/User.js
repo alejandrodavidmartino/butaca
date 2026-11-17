@@ -35,6 +35,13 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     active: { type: Boolean, default: true }, // el admin puede bloquear usuarios
     avatar: { type: String, default: '' },
+    // Versión de la foto de perfil (null = sin foto). Cambia la URL para saltarse la caché
+    avatarVersion: { type: Number, default: null },
+    bio: { type: String, trim: true, maxlength: [160, 'La bio puede tener como mucho 160 caracteres'], default: '' },
+    profilePublic: { type: Boolean, default: true }, // ¿otros usuarios pueden ver su perfil?
+    // "Perfil cinéfilo" que escribe Ratatús (se guarda para no llamar a la IA en cada visita)
+    tasteSummary: { type: String, default: '' },
+    tasteSummaryAt: { type: Date },
     favoriteGenres: [{ type: Number }], // ids de géneros de TMDB
     platforms: [{ type: String, enum: { values: PLATFORM_KEYS, message: 'Plataforma no válida: {VALUE}' } }], // plataformas de streaming que tiene (netflix, prime…)
   },

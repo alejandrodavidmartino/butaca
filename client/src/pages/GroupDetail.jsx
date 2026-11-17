@@ -378,11 +378,11 @@ function Members({ group, isOwner, me, run }) {
       <ul className="mt-4 space-y-3">
         {group.members.map((m) => (
           <li key={m._id} className="flex items-center gap-3">
-            <Avatar user={m} />
+            <Link to={`/u/${m.username}`} aria-hidden="true" tabIndex={-1}><Avatar user={m} /></Link>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">
+              <Link to={`/u/${m.username}`} className="block truncate text-sm font-medium hover:text-butaca-500">
                 {m.name} {m._id === me._id && <span className="text-zinc-500">(tú)</span>}
-              </span>
+              </Link>
               <span className="block truncate text-xs text-zinc-500">@{m.username}</span>
             </span>
             {m._id === group.owner._id ? (

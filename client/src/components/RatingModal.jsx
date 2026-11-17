@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { rateMovie, unrateMovie } from '../services/groups';
 import { getErrorMessage } from '../services/api';
+import { Link } from 'react-router-dom';
 import Modal from './Modal';
 import Avatar from './Avatar';
 import ScoreBadge, { scoreColor } from './ScoreBadge';
@@ -150,7 +151,11 @@ export default function RatingModal({ group, tmdbId, me, onChange, onClose }) {
             <Avatar user={r.user} />
             <div className="min-w-0 flex-1">
               <p className="text-sm">
-                <span className="font-medium">{r.user?.name || 'Antiguo miembro'}</span>{' '}
+                {r.user ? (
+                  <Link to={`/u/${r.user.username}`} className="font-medium hover:text-butaca-500">{r.user.name}</Link>
+                ) : (
+                  <span className="font-medium">Antiguo miembro</span>
+                )}{' '}
                 <span className="text-zinc-500">@{r.user?.username}</span>
                 {r.user?._id === me._id && <span className="text-zinc-500"> (tú)</span>}
               </p>

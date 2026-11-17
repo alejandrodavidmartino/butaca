@@ -42,10 +42,21 @@ export async function login(req, res) {
   res.json({ token: signToken(user), user });
 }
 
-// PATCH /api/auth/me  { name?, platforms? }  -> el usuario actualiza su perfil
+// PATCH /api/auth/me  { name?, username?, bio?, profilePublic?, platforms? }  -> el usuario actualiza su perfil
 export async function updateMe(req, res) {
-  const { name, platforms } = req.body;
+  const { name, platforms, bio, profilePublic } = req.body;
   if (name !== undefined) req.user.name = name;
+  if (bio !== undefined) req.user.bio = String(bio);
+  if (profilePublic !== undefined) req.user.profilePublic = Boolean(profilePublic);
+  if (req.body.username !== undefined) {
+    const username = String(req.body.username).trim().toLowerCase().replace(/^@/, '');
+    if (username !== req.user.username) {
+      if (await User.exists({ username, _id: { $ne: req.user._id } })) {
+        throw new HttpError(409, 'Ese nombre de usuario ya está cogido');
+      }
+      req.user.username = username; // el modelo valida el formato
+    }
+  }
   if (platforms !== undefined) {
     if (!Array.isArray(platforms)) throw new HttpError(400, 'Plataformas no válidas');
     req.user.platforms = [...new Set(platforms)];

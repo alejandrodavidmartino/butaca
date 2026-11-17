@@ -1,6 +1,7 @@
 import WatchedMovie from '../models/WatchedMovie.js';
 import { getMovieDetail } from '../services/tmdb.js';
 import { HttpError } from '../utils/httpError.js';
+import { getUserStats } from '../services/stats.js';
 
 // Crea o actualiza una película en el diario del usuario.
 // La usamos desde la API y también desde los grupos (al puntuar allí).
@@ -55,23 +56,7 @@ export async function listWatched(req, res) {
 
 // GET /api/me/watched/stats  -> estadísticas del diario
 export async function watchedStats(req, res) {
-  const all = await WatchedMovie.find({ user: req.user._id }).lean();
-  const rated = all.filter((m) => m.score != null);
-  const minutes = all.reduce((acc, m) => acc + (m.runtime || 0), 0);
-
-  // Género más visto
-  const genreCount = {};
-  all.forEach((m) => m.genres.forEach((g) => (genreCount[g] = (genreCount[g] || 0) + 1)));
-  const topGenre = Object.entries(genreCount).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-
-  res.json({
-    count: all.length,
-    rated: rated.length,
-    hours: Math.round(minutes / 60),
-    avgScore: rated.length ? Math.round((rated.reduce((a, m) => a + m.score, 0) / rated.length) * 10) / 10 : null,
-    topGenre,
-    best: rated.sort((a, b) => b.score - a.score)[0] || null,
-  });
+  res.json(await getUserStats(req.user._id));
 }
 
 // GET /api/me/watched/:tmdbId  -> ¿la he visto? (para la ficha)

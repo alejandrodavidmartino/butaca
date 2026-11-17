@@ -44,7 +44,20 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const value = { user, loading, login, register, logout, updateProfile, isAdmin: user?.role === 'admin' };
+  // Foto de perfil, contraseña y borrado de cuenta
+  const uploadAvatar = async (image) => setUser((await api.put('/auth/me/avatar', { image })).data.user);
+  const removeAvatar = async () => setUser((await api.delete('/auth/me/avatar')).data.user);
+  const changePassword = (current, next) => api.patch('/auth/me/password', { current, next }).then((r) => r.data);
+  const deleteAccount = async (password) => {
+    await api.delete('/auth/me', { data: { password } });
+    logout();
+  };
+  const generateTaste = async () => setUser((await api.post('/users/me/taste', null, { timeout: 60000 })).data.user);
+
+  const value = {
+    user, loading, login, register, logout, updateProfile, uploadAvatar, removeAvatar,
+    changePassword, deleteAccount, generateTaste, isAdmin: user?.role === 'admin',
+  };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
