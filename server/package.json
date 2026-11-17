@@ -24,5 +24,12 @@
   "devDependencies": {
     "nodemon": "^3.1.14"
   },
-  "type": "module"
+  "type": "module",
+  "nodemonConfig": {
+    "watch": [
+      "src",
+      ".env"
+    ],
+    "ext": "js,json"
+  }
 }

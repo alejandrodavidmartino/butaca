@@ -27,6 +27,11 @@ app.use('/api/movies', movieRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
+// Aviso temprano si falta la credencial de TMDB
+if (!process.env.TMDB_READ_TOKEN && !process.env.TMDB_API_KEY) {
+  console.warn('⚠️  Falta TMDB_READ_TOKEN (o TMDB_API_KEY) en server/.env: el catálogo no funcionará');
+}
+
 // Primero conectamos a la base de datos y después arrancamos el servidor
 connectDB()
   .then(() => {
