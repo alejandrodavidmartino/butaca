@@ -5,6 +5,7 @@ import { getErrorMessage } from '../services/api';
 import AiRecommendation from '../components/AiRecommendation';
 import AddToGroup from '../components/AddToGroup';
 import Ratatus from '../components/Ratatus';
+import PlatformPicker from '../components/PlatformPicker';
 
 // Sugerencias rápidas para no empezar con la pantalla en blanco
 const MOODS = ['😂 Reírme', '😱 Pasar miedo', '😭 Llorar a gusto', '🤯 Que me vuele la cabeza', '💘 Algo romántico', '🧘 Algo tranquilo'];
@@ -15,7 +16,10 @@ const TIME = ['Menos de 1 h 30', 'Unas 2 horas', 'Me da igual'];
 const FOLLOW_UPS = ['Algo más antiguo', 'Sin animación', 'Más cortas', 'Algo menos conocido', 'Más de este estilo'];
 
 export default function Sommelier() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
+  // Plataformas que tiene el usuario (se guardan en su perfil para la próxima vez)
+  const [platforms, setPlatforms] = useState(user.platforms || []);
+  const [showPlatforms, setShowPlatforms] = useState(false);
   // Cada mensaje: { role: 'user' | 'assistant', content, recommendations? }
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -23,12 +27,20 @@ export default function Sommelier() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const bottom = useRef(null);
+  const saveTimer = useRef(0);
 
   // Baja hasta el último mensaje (solo cuando ya hay conversación)
   useEffect(() => {
     if (messages.length === 0) return;
     bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, loading]);
+
+  // Guardamos las plataformas en el perfil (con un pequeño retardo por si marca varias seguidas)
+  const changePlatforms = (next) => {
+    setPlatforms(next);
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => updateProfile({ platforms: next }).catch(() => {}), 600);
+  };
 
   const send = async (content) => {
     content = content.trim();
@@ -48,8 +60,11 @@ export default function Sommelier() {
           ? `${m.content}\nRecomendé: ${m.recommendations.map((r) => `${r.title} (${r.year})`).join(', ')}`
           : m.content,
       }));
-      const answer = await askSommelier(history);
-      setMessages([...next, { role: 'assistant', content: answer.message, recommendations: answer.recommendations }]);
+      const answer = await askSommelier(history, platforms);
+      setMessages([
+        ...next,
+        { role: 'assistant', content: answer.message, recommendations: answer.recommendations, filtered: answer.platforms?.length > 0 },
+      ]);
     } catch (err) {
       setError(getErrorMessage(err));
       setMessages(messages); // deshacemos el mensaje del usuario para que pueda reintentarlo
@@ -90,6 +105,15 @@ export default function Sommelier() {
           <ChipGroup label="¿Qué te apetece?" options={MOODS} value={prefs.mood} onChange={(mood) => setPrefs({ ...prefs, mood })} />
           <ChipGroup label="¿Con quién?" options={COMPANY} value={prefs.company} onChange={(company) => setPrefs({ ...prefs, company })} />
           <ChipGroup label="¿Cuánto tiempo tienes?" options={TIME} value={prefs.time} onChange={(time) => setPrefs({ ...prefs, time })} />
+          <fieldset>
+            <legend className="mb-1 text-sm font-medium text-zinc-300">¿Qué plataformas tienes?</legend>
+            <p className="mb-2 text-xs text-zinc-500">
+              {platforms.length
+                ? 'Solo te recomendaré películas que puedas ver en ellas ahora mismo en España.'
+                : 'Opcional: si no marcas ninguna, te recomiendo de todo y te digo dónde verlo.'}
+            </p>
+            <PlatformPicker value={platforms} onChange={changePlatforms} />
+          </fieldset>
           <div>
             <label htmlFor="extra" className="mb-2 block text-sm font-medium text-zinc-300">¿Algo más? (opcional)</label>
             <input
@@ -127,9 +151,12 @@ export default function Sommelier() {
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {m.recommendations.map((r) => (
-                    <AiRecommendation key={r.id} movie={r} action={<AddToGroup tmdbId={r.id} compact />} />
+                    <AiRecommendation key={r.id} movie={r} myPlatforms={platforms} action={<AddToGroup tmdbId={r.id} compact />} />
                   ))}
                 </div>
+                {m.filtered && m.recommendations.length > 0 && (
+                  <p className="mt-2 text-xs text-emerald-400">✓ Todas disponibles en tus plataformas</p>
+                )}
                 {m.recommendations.length === 0 && (
                   <p className="mt-3 text-sm text-zinc-500">No he encontrado esas películas en el catálogo. Prueba a pedírmelo de otra forma.</p>
                 )}
@@ -159,6 +186,18 @@ export default function Sommelier() {
                   </button>
                 ))}
               </div>
+              {/* Plataformas activas (se pueden cambiar sin salir de la conversación) */}
+              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                <span>{platforms.length ? `Solo en tus ${platforms.length} plataformas` : 'Todas las plataformas'}</span>
+                <button type="button" onClick={() => setShowPlatforms(!showPlatforms)} className="text-butaca-500 hover:underline" aria-expanded={showPlatforms}>
+                  {showPlatforms ? 'Ocultar' : 'Cambiar'}
+                </button>
+              </div>
+              {showPlatforms && (
+                <div className="mb-3">
+                  <PlatformPicker value={platforms} onChange={changePlatforms} compact />
+                </div>
+              )}
               <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex gap-2">
                 <label htmlFor="msg" className="sr-only">Escribe a Ratatús</label>
                 <input id="msg" className="input flex-1" value={text} onChange={(e) => setText(e.target.value)}

@@ -42,6 +42,18 @@ export async function login(req, res) {
   res.json({ token: signToken(user), user });
 }
 
+// PATCH /api/auth/me  { name?, platforms? }  -> el usuario actualiza su perfil
+export async function updateMe(req, res) {
+  const { name, platforms } = req.body;
+  if (name !== undefined) req.user.name = name;
+  if (platforms !== undefined) {
+    if (!Array.isArray(platforms)) throw new HttpError(400, 'Plataformas no válidas');
+    req.user.platforms = [...new Set(platforms)];
+  }
+  await req.user.save(); // valida que las plataformas existan (enum del modelo)
+  res.json({ user: req.user });
+}
+
 // GET /api/auth/me  (requiere estar logueado)
 export async function me(req, res) {
   res.json({ user: req.user });

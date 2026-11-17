@@ -1,6 +1,7 @@
 import Group from '../models/Group.js';
 import { askGeminiJSON } from '../services/gemini.js';
-import { findMovie } from '../services/tmdb.js';
+import { findMovie, getMoviePlatforms, discoverOnPlatforms } from '../services/tmdb.js';
+import { PLATFORMS, PLATFORM_KEYS } from '../config/platforms.js';
 import { HttpError } from '../utils/httpError.js';
 
 // Esquema JSON que Gemini está obligado a cumplir (structured output)
@@ -51,7 +52,7 @@ ${JSON_FORMAT}`;
 // Convierte las recomendaciones de la IA en películas reales de TMDB (con cartel e id)
 async function resolveRecommendations(recs = [], excludeIds = new Set()) {
   const resolved = await Promise.all(
-    recs.slice(0, 8).map(async (r) => {
+    recs.slice(0, 14).map(async (r) => {
       if (!r?.title) return null;
       try {
         const movie = await findMovie(String(r.title), parseInt(r.year) || undefined);
@@ -66,9 +67,36 @@ async function resolveRecommendations(recs = [], excludeIds = new Set()) {
   return resolved.filter((m) => m && !seen.has(m.id) && seen.add(m.id));
 }
 
-// POST /api/ai/sommelier  { messages: [{ role: 'user'|'assistant', content }] }
-// Conversación: el frontend manda el historial para que la IA tenga contexto
+// Añade a cada película las plataformas de España donde se puede ver
+const withPlatforms = (movies) =>
+  Promise.all(movies.map(async (m) => ({ ...m, platforms: await getMoviePlatforms(m.id).catch(() => []) })));
+
+// Esquema para el "plan B": Ratatús elige de una lista cerrada de películas (por id)
+const PICK_SCHEMA = {
+  type: 'object',
+  properties: {
+    message: { type: 'string' },
+    picks: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { id: { type: 'integer' }, reason: { type: 'string' } },
+        required: ['id', 'reason'],
+      },
+    },
+  },
+  required: ['message', 'picks'],
+};
+
+const WANTED = 5; // recomendaciones que devolvemos
+
+// POST /api/ai/sommelier  { messages: [{ role, content }], platforms?: ['netflix', ...] }
+// Conversación: el frontend manda el historial para que la IA tenga contexto.
+// Si llegan plataformas, SOLO se devuelven películas disponibles en ellas en España.
 export async function sommelier(req, res) {
+  const platforms = (Array.isArray(req.body.platforms) ? req.body.platforms : []).filter((k) => PLATFORM_KEYS.includes(k));
+  const platformNames = PLATFORMS.filter((p) => platforms.includes(p.key)).map((p) => p.name);
+
   const history = Array.isArray(req.body.messages) ? req.body.messages : [];
   const messages = history
     .slice(-8) // solo los últimos mensajes: menos coste y menos tokens
@@ -79,16 +107,61 @@ export async function sommelier(req, res) {
     throw new HttpError(400, 'Cuéntame qué te apetece ver');
   }
 
+  // ---------- Paso 1: Ratatús propone películas ----------
+  // Con plataformas pedimos más candidatas (12), porque luego filtramos las que no estén disponibles
+  const count = platforms.length ? 12 : WANTED;
+  const platformNote = platforms.length
+    ? `\nEl usuario SOLO tiene estas plataformas en España: ${platformNames.join(', ')}. ` +
+      'Propón películas que creas que están ahora en su catálogo español. Puedes mencionar la plataforma en "reason". ' +
+      'En "message" NO digas cuántas películas recomiendas (luego filtramos las que no estén disponibles).'
+    : '';
   // Un único mensaje de sistema: si mandamos varios, el modelo a veces ignora el formato
-  const answer = await askGeminiJSON(
-    [{ role: 'system', content: `${SOMMELIER_PROMPT}\n\nEl usuario se llama ${req.user.name}.` }, ...messages],
-    { schema: RECOMMENDATION_SCHEMA }
-  );
+  const system = `${SOMMELIER_PROMPT.replace('exactamente 5', `exactamente ${count}`)}\n\nEl usuario se llama ${req.user.name}.${platformNote}`;
+  const answer = await askGeminiJSON([{ role: 'system', content: system }, ...messages], { schema: RECOMMENDATION_SCHEMA });
 
-  res.json({
-    message: String(answer.message || 'Aquí tienes mis propuestas:'),
-    recommendations: await resolveRecommendations(answer.recommendations),
-  });
+  // ---------- Paso 2: comprobamos en TMDB dónde está cada una ----------
+  let recommendations = await withPlatforms(await resolveRecommendations(answer.recommendations));
+  let message = String(answer.message || 'Aquí tienes mis propuestas:');
+  let usedCatalog = false;
+
+  if (platforms.length) {
+    const available = (m) => m.platforms.some((p) => platforms.includes(p.key));
+    recommendations = recommendations.filter(available);
+
+    // ---------- Paso 3 (plan B): si no llegamos a 5, completamos con el catálogo real de sus plataformas ----------
+    if (recommendations.length < WANTED) {
+      usedCatalog = true;
+      const already = new Set(recommendations.map((m) => m.id));
+      const pool = (await discoverOnPlatforms(platforms)).filter((m) => !already.has(m.id));
+      const list = pool.map((m) => `${m.id} | ${m.title} (${m.year}) | nota ${m.rating}`).join('\n');
+      const need = WANTED - recommendations.length;
+
+      const pick = await askGeminiJSON(
+        [
+          {
+            role: 'system',
+            content: `${SOMMELIER_PROMPT.replace('exactamente 5', `exactamente ${need}`)}
+Esta vez SOLO puedes elegir películas de esta lista (disponibles en ${platformNames.join(', ')}).
+Devuelve su "id" exacto de la lista. Formato: {"message": "...", "picks": [{"id": 123, "reason": "..."}]}
+LISTA:
+${list}`,
+          },
+          ...messages,
+        ],
+        { schema: PICK_SCHEMA }
+      );
+      const byId = new Map(pool.map((m) => [m.id, m]));
+      const picked = (pick.picks || [])
+        .map((p) => byId.get(Number(p.id)) && { ...byId.get(Number(p.id)), reason: String(p.reason || '') })
+        .filter(Boolean)
+        .slice(0, need);
+      recommendations = [...recommendations, ...(await withPlatforms(picked))];
+      // Si casi todas vienen del catálogo, usamos el mensaje de esa segunda respuesta
+      if (pick.message && picked.length > recommendations.length - picked.length) message = String(pick.message);
+    }
+  }
+
+  res.json({ message, recommendations: recommendations.slice(0, WANTED), platforms, usedCatalog });
 }
 
 // POST /api/ai/groups/:id/recommend
@@ -140,6 +213,6 @@ En "message" resume en una frase, con tu estilo de Ratatús, los gustos del grup
   const exclude = new Set(group.movies.map((m) => m.tmdbId));
   res.json({
     message: String(answer.message || ''),
-    recommendations: await resolveRecommendations(answer.recommendations, exclude),
+    recommendations: await withPlatforms(await resolveRecommendations(answer.recommendations, exclude)),
   });
 }

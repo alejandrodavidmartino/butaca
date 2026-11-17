@@ -4,6 +4,8 @@ import { recommendForGroup } from '../services/ai';
 import { getErrorMessage } from '../services/api';
 import Ratatus from './Ratatus';
 import Rating from './Rating';
+import PlatformBadges from './PlatformBadges';
+import { useAuth } from '../context/AuthContext';
 
 // Frases que va diciendo Ratatús mientras Gemini piensa
 const THINKING = [
@@ -21,6 +23,7 @@ export default function RatatusPopup({ group, onClose, onAdd }) {
   const [index, setIndex] = useState(0);
   const [phrase, setPhrase] = useState(0);
   const [added, setAdded] = useState({});
+  const { user } = useAuth();
   const inGroup = new Set(group.movies.map((m) => m.tmdbId));
 
   const ask = useCallback(async () => {
@@ -153,6 +156,7 @@ export default function RatatusPopup({ group, onClose, onAdd }) {
                   {movie.year} <Rating value={movie.rating} />
                 </p>
                 {movie.overview && <p className="mt-3 line-clamp-4 text-sm text-zinc-300">{movie.overview}</p>}
+                {movie.platforms && <PlatformBadges platforms={movie.platforms} highlight={user?.platforms} className="mt-3" />}
                 <div className="mt-4 flex flex-wrap gap-2">
                   {inGroup.has(movie.id) || added[movie.id] ? (
                     <span className="inline-flex items-center rounded-lg bg-emerald-500/15 px-3 py-2 text-sm text-emerald-300">✓ En la lista del grupo</span>

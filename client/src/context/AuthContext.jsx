@@ -32,12 +32,19 @@ export function AuthProvider({ children }) {
 
   const register = async (form) => saveSession((await api.post('/auth/register', form)).data);
 
+  // Actualiza datos del perfil (p. ej. las plataformas que tiene)
+  const updateProfile = async (fields) => {
+    const { data } = await api.patch('/auth/me', fields);
+    setUser(data.user);
+    return data.user;
+  };
+
   const logout = () => {
     localStorage.removeItem('butaca_token');
     setUser(null);
   };
 
-  const value = { user, loading, login, register, logout, isAdmin: user?.role === 'admin' };
+  const value = { user, loading, login, register, logout, updateProfile, isAdmin: user?.role === 'admin' };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

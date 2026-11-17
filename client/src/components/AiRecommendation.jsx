@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import Rating from './Rating';
+import PlatformBadges from './PlatformBadges';
 
 // Tarjeta de una película recomendada por la IA, con el "por qué"
-export default function AiRecommendation({ movie, action }) {
+export default function AiRecommendation({ movie, action, myPlatforms = [] }) {
   return (
     <article className="flex gap-4 rounded-xl border border-white/10 bg-telon p-3">
       <Link to={`/pelicula/${movie.id}`} className="shrink-0">
@@ -23,6 +24,7 @@ export default function AiRecommendation({ movie, action }) {
           <span aria-hidden="true">🐀 </span>
           {movie.reason}
         </p>
+        {movie.platforms && <PlatformBadges platforms={movie.platforms} highlight={myPlatforms} className="mt-2" />}
         {action && <div className="mt-auto pt-3">{action}</div>}
       </div>
     </article>

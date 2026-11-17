@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { PLATFORM_KEYS } from '../config/platforms.js';
 
 const userSchema = new mongoose.Schema(
   {
@@ -35,6 +36,7 @@ const userSchema = new mongoose.Schema(
     active: { type: Boolean, default: true }, // el admin puede bloquear usuarios
     avatar: { type: String, default: '' },
     favoriteGenres: [{ type: Number }], // ids de géneros de TMDB
+    platforms: [{ type: String, enum: { values: PLATFORM_KEYS, message: 'Plataforma no válida: {VALUE}' } }], // plataformas de streaming que tiene (netflix, prime…)
   },
   { timestamps: true } // añade createdAt y updatedAt
 );

@@ -41,11 +41,13 @@ export default function TrendingHero({ movies = [], loading }) {
             alt=""
             // La nueva entra con un fundido y la anterior se desvanece: fundido cruzado sin "doble exposición"
             className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500 motion-safe:animate-[fade-in_500ms_ease-out]"
-            style={{ opacity: i === layers.length - 1 ? 0.45 : 0 }}
+            // Mismo brillo durante y después del fundido (antes acababa en 0.45 y "se apagaba")
+            style={{ opacity: i === layers.length - 1 ? 1 : 0 }}
           />
         ))}
-        <div className="absolute inset-0 bg-gradient-to-t from-sala via-sala/60 to-sala/20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-sala via-sala/50 to-transparent" />
+        {/* Degradados para que el texto se lea: oscuro a la izquierda y abajo, la imagen luce a la derecha */}
+        <div className="absolute inset-0 bg-gradient-to-t from-sala via-sala/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-sala/95 via-sala/60 to-transparent" />
       </div>
 
       <div className="mx-auto max-w-7xl px-4 pt-14 sm:pt-20">

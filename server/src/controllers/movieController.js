@@ -41,6 +41,11 @@ export async function detail(req, res) {
   res.json(await tmdb.getMovieDetail(id));
 }
 
+// GET /api/movies/platforms  -> plataformas de streaming seleccionables (con logo)
+export async function platforms(_req, res) {
+  res.json(await tmdb.getPlatforms());
+}
+
 // GET /api/movies/random?genre=35  -> "Sorpréndeme"
 export async function random(req, res) {
   res.json(await tmdb.randomGoodMovie(parseInt(req.query.genre) || undefined));

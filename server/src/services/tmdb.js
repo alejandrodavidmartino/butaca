@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { PLATFORMS, platformForProviderId } from '../config/platforms.js';
 
 // Cliente de TMDB. Admite dos tipos de credencial:
 //  - TMDB_READ_TOKEN: "API Read Access Token" (recomendado, va en la cabecera)
@@ -184,4 +185,43 @@ export async function findMovie(title, year) {
   if (!data?.results.length) data = await search({});
   const best = data.results.find((m) => m.poster_path) || data.results[0];
   return best ? toMovieCard(best) : null;
+}
+
+// ---------- Plataformas de streaming en España ----------
+
+// Lista de plataformas seleccionables con su logo (los logos los da TMDB)
+export async function getPlatforms() {
+  const data = await get('/watch/providers/movie', { watch_region: 'ES' });
+  return PLATFORMS.map((p) => {
+    const provider = data.results.find((r) => r.provider_id === p.ids[0]);
+    return { key: p.key, name: p.name, logo: img(provider?.logo_path, 'w92') };
+  });
+}
+
+// Plataformas de suscripción (agrupadas) donde está una película en España
+export async function getMoviePlatforms(movieId) {
+  const data = await get(`/movie/${movieId}/watch/providers`);
+  const es = data.results?.ES || {};
+  const offers = [...(es.flatrate || []), ...(es.free || []), ...(es.ads || [])];
+  const found = new Map();
+  for (const o of offers) {
+    const p = platformForProviderId(o.provider_id);
+    if (p && !found.has(p.key)) found.set(p.key, { key: p.key, name: p.name, logo: img(o.logo_path, 'w92') });
+  }
+  return [...found.values()];
+}
+
+// Catálogo de películas bien valoradas disponibles en unas plataformas concretas (para el plan B de Ratatús)
+export async function discoverOnPlatforms(platformKeys, pages = 3) {
+  const ids = PLATFORMS.filter((p) => platformKeys.includes(p.key)).flatMap((p) => p.ids);
+  const params = {
+    watch_region: 'ES',
+    with_watch_providers: ids.join('|'), // "|" = cualquiera de ellas
+    with_watch_monetization_types: 'flatrate|free|ads',
+    'vote_count.gte': 200,
+    sort_by: 'popularity.desc',
+    include_adult: false,
+  };
+  const results = await Promise.all(Array.from({ length: pages }, (_, i) => get('/discover/movie', { ...params, page: i + 1 })));
+  return results.flatMap((r) => r.results).map(toMovieCard);
 }
