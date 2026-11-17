@@ -11,6 +11,18 @@ export function errorHandler(err, _req, res, _next) {
     return res.status(400).json({ message: 'Identificador no válido' });
   }
 
+  // Errores al llamar a TMDB (axios)
+  if (err.isAxiosError) {
+    const status = err.response?.status;
+    if (status === 404) return res.status(404).json({ message: 'Película no encontrada' });
+    if (status === 401) {
+      console.error('TMDB: credencial no válida. Revisa TMDB_READ_TOKEN o TMDB_API_KEY en el .env');
+    } else {
+      console.error('TMDB:', err.message);
+    }
+    return res.status(502).json({ message: 'No se pudo obtener la información de películas' });
+  }
+
   const status = err.status || 500;
   if (status === 500) console.error(err);
   res.status(status).json({ message: status === 500 ? 'Error interno del servidor' : err.message });

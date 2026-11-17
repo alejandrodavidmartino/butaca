@@ -6,6 +6,7 @@ import Movies from './pages/Movies';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import MyButaca from './pages/MyButaca';
+import MovieDetail from './pages/MovieDetail';
 import NotFound from './pages/NotFound';
 import AdminDashboard from './admin/AdminDashboard';
 
@@ -16,6 +17,7 @@ export default function App() {
         {/* Rutas públicas */}
         <Route path="/" element={<Home />} />
         <Route path="/peliculas" element={<Movies />} />
+        <Route path="/pelicula/:id" element={<MovieDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Register />} />
 

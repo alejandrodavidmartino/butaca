@@ -4,6 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import { connectDB } from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
+import movieRoutes from './routes/movieRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -20,6 +21,7 @@ app.get('/api/health', (req, res) => {
 
 // Rutas de la API
 app.use('/api/auth', authRoutes);
+app.use('/api/movies', movieRoutes);
 
 // Manejo de errores (siempre al final)
 app.use(notFound);
