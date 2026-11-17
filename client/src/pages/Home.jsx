@@ -39,7 +39,8 @@ export default function Home() {
             perfecta para que dejéis de discutir y empecéis a disfrutar.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/peliculas" className="btn-primary px-6 py-3 text-base">Explorar películas</Link>
+            <Link to="/sommelier" className="btn-primary px-6 py-3 text-base">🍷 Pregunta al Sommelier IA</Link>
+            <Link to="/peliculas" className="btn-ghost px-6 py-3 text-base">Explorar películas</Link>
             {!user && <Link to="/registro" className="btn-ghost px-6 py-3 text-base">Crear cuenta gratis</Link>}
           </div>
 

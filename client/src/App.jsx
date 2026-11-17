@@ -8,6 +8,7 @@ import Register from './pages/Register';
 import MyGroups from './pages/MyGroups';
 import GroupDetail from './pages/GroupDetail';
 import JoinGroup from './pages/JoinGroup';
+import Sommelier from './pages/Sommelier';
 import MovieDetail from './pages/MovieDetail';
 import NotFound from './pages/NotFound';
 import AdminDashboard from './admin/AdminDashboard';
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/grupos" element={<MyGroups />} />
           <Route path="/grupos/:id" element={<GroupDetail />} />
           <Route path="/unirse/:code" element={<JoinGroup />} />
+          <Route path="/sommelier" element={<Sommelier />} />
           <Route path="/mi-butaca" element={<Navigate to="/grupos" replace />} />
         </Route>
 

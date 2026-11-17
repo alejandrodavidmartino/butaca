@@ -150,3 +150,13 @@ export async function randomGoodMovie(genre) {
   const pool = data.results.filter((m) => m.poster_path);
   return toMovieCard(pool[Math.floor(Math.random() * pool.length)]);
 }
+
+// Busca una película por título (y año, si se conoce) y devuelve la más parecida.
+// Lo usamos para convertir los títulos que propone la IA en películas reales de TMDB.
+export async function findMovie(title, year) {
+  const search = (params) => get('/search/movie', { query: title, include_adult: false, ...params });
+  let data = year ? await search({ primary_release_year: year }) : null;
+  if (!data?.results.length) data = await search({});
+  const best = data.results.find((m) => m.poster_path) || data.results[0];
+  return best ? toMovieCard(best) : null;
+}

@@ -12,6 +12,8 @@ import Rating from '../components/Rating';
 import RandomPicker from '../components/RandomPicker';
 import RatingModal from '../components/RatingModal';
 import ScoreBadge from '../components/ScoreBadge';
+import AiRecommendation from '../components/AiRecommendation';
+import { recommendForGroup } from '../services/ai';
 
 export default function GroupDetail() {
   const { id } = useParams();
@@ -129,6 +131,8 @@ export default function GroupDetail() {
               </button>
             ))}
           </div>
+
+          <GroupAI group={group} onAdd={(tmdbId) => groupsApi.addMovieToGroup(group._id, tmdbId).then(setGroup)} />
 
           {tab === 'watched' && ranking.length > 1 && (
             <div className="mt-6 rounded-2xl border border-white/10 bg-telon p-5">
@@ -449,5 +453,76 @@ function AddMovieModal({ group, onClose, onAdd }) {
       </ul>
       {q.trim().length >= 2 && results.length === 0 && <p className="mt-4 text-sm text-zinc-500">Sin resultados.</p>}
     </Modal>
+  );
+}
+
+// Recomendaciones de Gemini basadas en las notas y la lista del grupo
+function GroupAI({ group, onAdd }) {
+  const [state, setState] = useState({ loading: false, data: null, error: '' });
+  const [added, setAdded] = useState({});
+  const inGroup = new Set(group.movies.map((m) => m.tmdbId));
+  const rated = group.movies.filter((m) => m.ratings?.length).length;
+
+  const ask = async () => {
+    setState({ loading: true, data: null, error: '' });
+    try {
+      setState({ loading: false, data: await recommendForGroup(group._id), error: '' });
+    } catch (err) {
+      setState({ loading: false, data: null, error: getErrorMessage(err) });
+    }
+  };
+
+  const add = async (tmdbId) => {
+    try {
+      await onAdd(tmdbId);
+      setAdded((a) => ({ ...a, [tmdbId]: true }));
+    } catch (err) {
+      setState((s) => ({ ...s, error: getErrorMessage(err) }));
+    }
+  };
+
+  return (
+    <div className="mt-6 overflow-hidden rounded-2xl border border-butaca-500/30 bg-gradient-to-br from-butaca-700/25 to-telon p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-semibold">🤖 Recomendaciones de la IA para el grupo</h2>
+          <p className="text-sm text-zinc-400">
+            {rated > 0
+              ? `Gemini analiza vuestras ${rated} películas puntuadas y lo que tenéis pendiente.`
+              : 'Puntuad algunas películas vistas para que las recomendaciones sean más precisas.'}
+          </p>
+        </div>
+        <button onClick={ask} disabled={state.loading || group.movies.length === 0} className="btn-primary">
+          {state.loading ? 'Analizando gustos…' : state.data ? '🔄 Otras ideas' : '✨ Recomiéndanos'}
+        </button>
+      </div>
+
+      {state.error && <p role="alert" className="alert-error mt-4">{state.error}</p>}
+      {state.loading && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {[1, 2, 3, 4].map((i) => <div key={i} className="h-40 animate-pulse rounded-xl bg-white/5" />)}
+        </div>
+      )}
+      {state.data && (
+        <>
+          {state.data.message && <p className="mt-4 italic text-zinc-200">“{state.data.message}”</p>}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {state.data.recommendations.map((r) => (
+              <AiRecommendation
+                key={r.id}
+                movie={r}
+                action={
+                  inGroup.has(r.id) || added[r.id] ? (
+                    <span className="text-sm text-emerald-400">✓ En la lista del grupo</span>
+                  ) : (
+                    <button onClick={() => add(r.id)} className="btn-ghost px-3 py-1.5 text-xs">＋ Añadir al grupo</button>
+                  )
+                }
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }

@@ -4,7 +4,7 @@ import { addMovieToGroup, getMyGroups } from '../services/groups';
 import { getErrorMessage } from '../services/api';
 
 // Botón "Añadir a grupo" con desplegable de mis grupos (en la ficha de película)
-export default function AddToGroup({ tmdbId }) {
+export default function AddToGroup({ tmdbId, compact = false }) {
   const [open, setOpen] = useState(false);
   const [groups, setGroups] = useState(null);
   const [status, setStatus] = useState({}); // { [groupId]: 'ok' | 'mensaje de error' }
@@ -32,7 +32,7 @@ export default function AddToGroup({ tmdbId }) {
 
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen(!open)} className="btn-ghost px-5 py-3" aria-expanded={open}>
+      <button onClick={() => setOpen(!open)} className={compact ? 'btn-ghost px-3 py-1.5 text-xs' : 'btn-ghost px-5 py-3'} aria-expanded={open}>
         ＋ Añadir a un grupo
       </button>
       {open && (
