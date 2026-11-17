@@ -15,7 +15,15 @@ import Settings from './pages/Settings';
 import { useAuth } from './context/AuthContext';
 import MovieDetail from './pages/MovieDetail';
 import NotFound from './pages/NotFound';
+import AdminLayout from './admin/AdminLayout';
 import AdminDashboard from './admin/AdminDashboard';
+import AdminUsers from './admin/AdminUsers';
+import AdminCollections from './admin/AdminCollections';
+import CollectionEditor from './admin/CollectionEditor';
+import AdminTaxonomy from './admin/AdminTaxonomy';
+import AdminModeration from './admin/AdminModeration';
+import Collections from './pages/Collections';
+import CollectionDetail from './pages/CollectionDetail';
 
 export default function App() {
   return (
@@ -25,6 +33,8 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/peliculas" element={<Movies />} />
         <Route path="/pelicula/:id" element={<MovieDetail />} />
+        <Route path="/colecciones" element={<Collections />} />
+        <Route path="/colecciones/:slug" element={<CollectionDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Register />} />
 
@@ -43,7 +53,14 @@ export default function App() {
 
         {/* Solo administradores */}
         <Route element={<ProtectedRoute adminOnly />}>
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="usuarios" element={<AdminUsers />} />
+            <Route path="colecciones" element={<AdminCollections />} />
+            <Route path="colecciones/:id" element={<CollectionEditor />} />
+            <Route path="categorias" element={<AdminTaxonomy />} />
+            <Route path="moderacion" element={<AdminModeration />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<NotFound />} />

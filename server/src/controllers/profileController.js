@@ -1,12 +1,11 @@
 import User from '../models/User.js';
 import UserAvatar from '../models/UserAvatar.js';
 import WatchedMovie from '../models/WatchedMovie.js';
-import Group from '../models/Group.js';
-import GroupImage from '../models/GroupImage.js';
 import { getUserStats } from '../services/stats.js';
 import { askGeminiJSON } from '../services/gemini.js';
 import { parseImageDataUrl, sendImage } from '../utils/image.js';
 import { HttpError } from '../utils/httpError.js';
+import { deleteUserAndData } from '../services/users.js';
 
 // ---------- Foto de perfil ----------
 
@@ -54,25 +53,7 @@ export async function deleteAccount(req, res) {
   if (!(await user.comparePassword(req.body.password || ''))) {
     throw new HttpError(401, 'La contraseña no es correcta');
   }
-  const uid = user._id;
-
-  // Sus notas en grupos se borran; las películas que añadió se quedan (aparecen como "antiguo miembro")
-  await Group.updateMany({ 'movies.ratings.user': uid }, { $pull: { 'movies.$[].ratings': { user: uid } } });
-
-  // Sale de sus grupos: si era el creador, el grupo pasa al siguiente; si se queda vacío, se borra
-  for (const g of await Group.find({ members: uid })) {
-    g.members = g.members.filter((m) => String(m) !== String(uid));
-    if (g.members.length === 0) {
-      await GroupImage.deleteOne({ group: g._id });
-      await g.deleteOne();
-    } else {
-      if (String(g.owner) === String(uid)) g.owner = g.members[0];
-      await g.save();
-    }
-  }
-
-  await Promise.all([WatchedMovie.deleteMany({ user: uid }), UserAvatar.deleteOne({ user: uid })]);
-  await user.deleteOne();
+  await deleteUserAndData(user._id);
   res.json({ message: 'Tu cuenta y tus datos se han borrado. ¡Hasta pronto!' });
 }
 

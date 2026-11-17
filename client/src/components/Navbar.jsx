@@ -21,6 +21,7 @@ export default function Navbar() {
     <>
       <NavLink to="/" end className={linkClass} onClick={close}>Inicio</NavLink>
       <NavLink to="/peliculas" className={linkClass} onClick={close}>Películas</NavLink>
+      <NavLink to="/colecciones" className={linkClass} onClick={close}>Colecciones</NavLink>
       <NavLink to="/sommelier" className={linkClass} onClick={close}>🐀 Ratatús IA</NavLink>
       {user && <NavLink to="/grupos" className={linkClass} onClick={close}>Mis grupos</NavLink>}
     </>

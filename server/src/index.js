@@ -9,6 +9,8 @@ import groupRoutes from './routes/groupRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import meRoutes from './routes/meRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import collectionRoutes from './routes/collectionRoutes.js';
 import User from './models/User.js';
 import { syncGroupRatingsToDiaries } from './scripts/syncDiaries.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
@@ -32,6 +34,8 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/me', meRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/collections', collectionRoutes);
 
 // Manejo de errores (siempre al final)
 app.use(notFound);
