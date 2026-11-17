@@ -20,7 +20,7 @@ export default function AiRecommendation({ movie, action }) {
           {movie.year} <Rating value={movie.rating} />
         </p>
         <p className="mt-2 text-sm leading-snug text-zinc-300">
-          <span aria-hidden="true">🤖 </span>
+          <span aria-hidden="true">🐀 </span>
           {movie.reason}
         </p>
         {action && <div className="mt-auto pt-3">{action}</div>}

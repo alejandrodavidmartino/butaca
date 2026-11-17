@@ -12,8 +12,8 @@ import Rating from '../components/Rating';
 import RandomPicker from '../components/RandomPicker';
 import RatingModal from '../components/RatingModal';
 import ScoreBadge from '../components/ScoreBadge';
-import AiRecommendation from '../components/AiRecommendation';
-import { recommendForGroup } from '../services/ai';
+import Ratatus from '../components/Ratatus';
+import RatatusPopup from '../components/RatatusPopup';
 
 export default function GroupDetail() {
   const { id } = useParams();
@@ -456,73 +456,31 @@ function AddMovieModal({ group, onClose, onAdd }) {
   );
 }
 
-// Recomendaciones de Gemini basadas en las notas y la lista del grupo
+// Tarjeta de Ratatús: abre el pop-up con sus recomendaciones para el grupo
 function GroupAI({ group, onAdd }) {
-  const [state, setState] = useState({ loading: false, data: null, error: '' });
-  const [added, setAdded] = useState({});
-  const inGroup = new Set(group.movies.map((m) => m.tmdbId));
+  const [open, setOpen] = useState(false);
   const rated = group.movies.filter((m) => m.ratings?.length).length;
 
-  const ask = async () => {
-    setState({ loading: true, data: null, error: '' });
-    try {
-      setState({ loading: false, data: await recommendForGroup(group._id), error: '' });
-    } catch (err) {
-      setState({ loading: false, data: null, error: getErrorMessage(err) });
-    }
-  };
-
-  const add = async (tmdbId) => {
-    try {
-      await onAdd(tmdbId);
-      setAdded((a) => ({ ...a, [tmdbId]: true }));
-    } catch (err) {
-      setState((s) => ({ ...s, error: getErrorMessage(err) }));
-    }
-  };
-
   return (
-    <div className="mt-6 overflow-hidden rounded-2xl border border-butaca-500/30 bg-gradient-to-br from-butaca-700/25 to-telon p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-semibold">🤖 Recomendaciones de la IA para el grupo</h2>
+    <>
+      <div className="relative mt-6 flex items-center gap-4 overflow-hidden rounded-2xl border border-butaca-500/30 bg-gradient-to-br from-butaca-700/30 to-telon p-4 pr-5">
+        <button onClick={() => setOpen(true)} className="w-20 shrink-0 transition hover:-translate-y-1" aria-label="Abrir recomendaciones de Ratatús">
+          <Ratatus />
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold uppercase tracking-widest text-butaca-500">Recomendaciones de Ratatús</p>
+          <h2 className="font-semibold">Nuestra rata experta en cine tiene ideas para vosotros</h2>
           <p className="text-sm text-zinc-400">
             {rated > 0
-              ? `Gemini analiza vuestras ${rated} películas puntuadas y lo que tenéis pendiente.`
-              : 'Puntuad algunas películas vistas para que las recomendaciones sean más precisas.'}
+              ? `Ha olfateado vuestras ${rated} películas puntuadas y lo que tenéis pendiente.`
+              : 'Puntuad algunas películas vistas y afinará mucho más el olfato.'}
           </p>
         </div>
-        <button onClick={ask} disabled={state.loading || group.movies.length === 0} className="btn-primary">
-          {state.loading ? 'Analizando gustos…' : state.data ? '🔄 Otras ideas' : '✨ Recomiéndanos'}
+        <button onClick={() => setOpen(true)} disabled={group.movies.length === 0} className="btn-primary shrink-0">
+          🐀 ¡Recomiéndanos!
         </button>
       </div>
-
-      {state.error && <p role="alert" className="alert-error mt-4">{state.error}</p>}
-      {state.loading && (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {[1, 2, 3, 4].map((i) => <div key={i} className="h-40 animate-pulse rounded-xl bg-white/5" />)}
-        </div>
-      )}
-      {state.data && (
-        <>
-          {state.data.message && <p className="mt-4 italic text-zinc-200">“{state.data.message}”</p>}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {state.data.recommendations.map((r) => (
-              <AiRecommendation
-                key={r.id}
-                movie={r}
-                action={
-                  inGroup.has(r.id) || added[r.id] ? (
-                    <span className="text-sm text-emerald-400">✓ En la lista del grupo</span>
-                  ) : (
-                    <button onClick={() => add(r.id)} className="btn-ghost px-3 py-1.5 text-xs">＋ Añadir al grupo</button>
-                  )
-                }
-              />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+      {open && <RatatusPopup group={group} onAdd={onAdd} onClose={() => setOpen(false)} />}
+    </>
   );
 }

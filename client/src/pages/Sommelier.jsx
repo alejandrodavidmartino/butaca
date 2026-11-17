@@ -4,6 +4,7 @@ import { askSommelier } from '../services/ai';
 import { getErrorMessage } from '../services/api';
 import AiRecommendation from '../components/AiRecommendation';
 import AddToGroup from '../components/AddToGroup';
+import Ratatus from '../components/Ratatus';
 
 // Sugerencias rápidas para no empezar con la pantalla en blanco
 const MOODS = ['😂 Reírme', '😱 Pasar miedo', '😭 Llorar a gusto', '🤯 Que me vuele la cabeza', '💘 Algo romántico', '🧘 Algo tranquilo'];
@@ -23,7 +24,9 @@ export default function Sommelier() {
   const [error, setError] = useState('');
   const bottom = useRef(null);
 
+  // Baja hasta el último mensaje (solo cuando ya hay conversación)
   useEffect(() => {
+    if (messages.length === 0) return;
     bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, loading]);
 
@@ -72,11 +75,12 @@ export default function Sommelier() {
   return (
     <section className="mx-auto max-w-4xl px-4 py-10">
       <header className="text-center">
-        <p className="text-5xl" aria-hidden="true">🍷🎬</p>
-        <h1 className="mt-3 font-display text-5xl tracking-wide sm:text-6xl">El Sommelier de cine</h1>
+        <div className="mx-auto w-32"><Ratatus mood={loading ? 'thinking' : started ? 'happy' : 'idle'} /></div>
+        <p className="mt-2 text-xs font-semibold uppercase tracking-[0.25em] text-butaca-500">El sommelier de cine</p>
+        <h1 className="font-display text-5xl tracking-wide sm:text-6xl">Pregúntale a Ratatús</h1>
         <p className="mx-auto mt-2 max-w-xl text-zinc-400">
-          Cuéntame cómo te sientes, con quién estás y cuánto tiempo tienes, {user.name.split(' ')[0]}.
-          Te sirvo cinco películas maridadas con tu noche.
+          Psst, {user.name.split(' ')[0]}… Vivo bajo las butacas y me he visto todas las películas desde el suelo.
+          Dime cómo te sientes, con quién estás y cuánto tiempo tienes, y te sirvo cinco pelis maridadas con tu noche.
         </p>
       </header>
 
@@ -102,7 +106,7 @@ export default function Sommelier() {
             disabled={loading || (!prefs.mood && !prefs.company && !prefs.time && !text.trim())}
             className="btn-primary w-full py-3 text-base"
           >
-            {loading ? 'Descorchando…' : '🍷 Recomiéndame'}
+            {loading ? 'Ratatús está pensando…' : '🐀 Recomiéndame, Ratatús'}
           </button>
         </div>
       )}
@@ -118,7 +122,7 @@ export default function Sommelier() {
             ) : (
               <div key={i}>
                 <div className="flex items-start gap-3">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-telon text-lg ring-1 ring-white/10" aria-hidden="true">🍷</span>
+                  <span className="w-11 shrink-0" aria-hidden="true"><Ratatus title="" /></span>
                   <p className="rounded-2xl rounded-tl-sm bg-telon px-4 py-2.5 text-zinc-200">{m.content}</p>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -135,13 +139,13 @@ export default function Sommelier() {
 
           {loading && (
             <div className="flex items-center gap-3 text-zinc-400">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-telon text-lg ring-1 ring-white/10">🍷</span>
-              <span className="flex gap-1" aria-label="El sommelier está pensando">
+              <span className="w-11 shrink-0"><Ratatus mood="thinking" title="" /></span>
+              <span className="flex gap-1" aria-label="Ratatús está pensando">
                 {[0, 1, 2].map((d) => (
                   <span key={d} className="h-2 w-2 animate-bounce rounded-full bg-butaca-500" style={{ animationDelay: `${d * 150}ms` }} />
                 ))}
               </span>
-              <span className="text-sm">Buscando en la bodega…</span>
+              <span className="text-sm">Ratatús rebusca debajo de las butacas…</span>
             </div>
           )}
 
@@ -156,7 +160,7 @@ export default function Sommelier() {
                 ))}
               </div>
               <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex gap-2">
-                <label htmlFor="msg" className="sr-only">Escribe al sommelier</label>
+                <label htmlFor="msg" className="sr-only">Escribe a Ratatús</label>
                 <input id="msg" className="input flex-1" value={text} onChange={(e) => setText(e.target.value)}
                   placeholder="Afina la recomendación: «algo de los 90», «más miedo»…" maxLength={500} />
                 <button className="btn-primary px-5" disabled={!text.trim()}>Enviar</button>
@@ -169,7 +173,7 @@ export default function Sommelier() {
 
       {error && <p role="alert" className="alert-error mt-6">{error}</p>}
       <div ref={bottom} />
-      <p className="mt-10 text-center text-xs text-zinc-600">Recomendaciones generadas con Google Gemini. Puede equivocarse.</p>
+      <p className="mt-10 text-center text-xs text-zinc-600">Ratatús usa Google Gemini. Hasta las ratas se equivocan.</p>
     </section>
   );
 }
