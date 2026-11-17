@@ -166,7 +166,6 @@ export default function GroupDetail() {
           ) : (
             <ul className="mt-6 grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 xl:grid-cols-4">
               {list.map((m) => {
-                const canRemove = isOwner || m.addedBy?._id === user._id;
                 return (
                   <li key={m.tmdbId} className="group">
                     <Link to={`/pelicula/${m.tmdbId}`} className="relative block aspect-[2/3] overflow-hidden rounded-xl bg-telon ring-1 ring-white/5 hover:ring-butaca-500/60">
@@ -227,15 +226,17 @@ export default function GroupDetail() {
                           ✓ Vista
                         </button>
                       )}
-                      {canRemove && (
-                        <button
-                          onClick={() => run(() => groupsApi.removeMovie(group._id, m.tmdbId))}
-                          className="rounded-md bg-white/5 px-2 py-1 text-xs text-zinc-400 hover:bg-butaca-500/20 hover:text-red-300"
-                          aria-label={`Quitar ${m.title} del grupo`}
-                        >
-                          🗑
-                        </button>
-                      )}
+                      {/* Cualquier miembro puede quitarla; si la puso otro, pedimos confirmación */}
+                      <button
+                        onClick={() =>
+                          (m.addedBy?._id === user._id || confirm(`¿Quitar «${m.title}» del grupo? La añadió @${m.addedBy?.username || 'otro miembro'}.`)) &&
+                          run(() => groupsApi.removeMovie(group._id, m.tmdbId))
+                        }
+                        className="rounded-md bg-white/5 px-2 py-1 text-xs text-zinc-400 hover:bg-butaca-500/20 hover:text-red-300"
+                        aria-label={`Quitar ${m.title} del grupo`}
+                      >
+                        🗑
+                      </button>
                     </div>
                   </li>
                 );

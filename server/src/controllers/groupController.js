@@ -225,15 +225,13 @@ export async function unrateMovie(req, res) {
   res.json(await populated(group));
 }
 
-// DELETE /api/groups/:id/movies/:tmdbId  (quien la añadió o el creador)
+// DELETE /api/groups/:id/movies/:tmdbId  (cualquier miembro del grupo)
 export async function removeMovie(req, res) {
   const group = await loadGroup(req.params.id, req.user._id);
   const movie = group.movies.find((m) => m.tmdbId === Number(req.params.tmdbId));
   if (!movie) throw new HttpError(404, 'Esa película no está en el grupo');
 
-  if (String(movie.addedBy) !== String(req.user._id) && !group.isOwner(req.user._id)) {
-    throw new HttpError(403, 'Solo quien la añadió o el creador del grupo pueden quitarla');
-  }
+  // Cualquier miembro puede quitar una película (loadGroup ya comprobó que es miembro)
   movie.deleteOne();
   await group.save();
   res.json(await populated(group));
