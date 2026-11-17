@@ -20,3 +20,7 @@ export const removeMovie = (id, tmdbId) => api.delete(`/groups/${id}/movies/${tm
 export const randomFromGroup = (id, params) => api.get(`/groups/${id}/random`, { params }).then(data);
 
 export const searchUsers = (q) => api.get('/users/search', { params: { q } }).then(data);
+
+export const rateMovie = (id, tmdbId, score, comment) =>
+  api.put(`/groups/${id}/movies/${tmdbId}/rating`, { score, comment }).then(data);
+export const unrateMovie = (id, tmdbId) => api.delete(`/groups/${id}/movies/${tmdbId}/rating`).then(data);

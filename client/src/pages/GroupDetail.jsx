@@ -10,6 +10,8 @@ import Avatar from '../components/Avatar';
 import Modal from '../components/Modal';
 import Rating from '../components/Rating';
 import RandomPicker from '../components/RandomPicker';
+import RatingModal from '../components/RatingModal';
+import ScoreBadge from '../components/ScoreBadge';
 
 export default function GroupDetail() {
   const { id } = useParams();
@@ -21,6 +23,7 @@ export default function GroupDetail() {
   const [actionError, setActionError] = useState('');
   const [tab, setTab] = useState('pending');
   const [modal, setModal] = useState(null); // 'random' | 'add' | null
+  const [ratingFor, setRatingFor] = useState(null); // tmdbId de la película que se está puntuando
 
   useEffect(() => {
     groupsApi.getGroup(id).then(setGroup).catch((err) => setError(getErrorMessage(err)));
@@ -36,13 +39,30 @@ export default function GroupDetail() {
     }
   };
 
+  // Al marcar como vista, abrimos directamente la ventana de puntuación
+  const markWatched = async (tmdbId, watched) => {
+    setActionError('');
+    try {
+      setGroup(await groupsApi.setWatched(id, tmdbId, watched));
+      if (watched) setRatingFor(tmdbId);
+    } catch (err) {
+      setActionError(getErrorMessage(err));
+    }
+  };
+
   if (error) return <ErrorMessage message={error} />;
   if (!group) return <Spinner />;
 
   const isOwner = group.owner._id === user._id;
   const pending = group.movies.filter((m) => !m.watched);
   const watched = group.movies.filter((m) => m.watched);
-  const list = (tab === 'pending' ? pending : watched).slice().reverse(); // más recientes primero
+  // Pendientes: últimas añadidas primero. Vistas: últimas vistas primero.
+  const list =
+    tab === 'pending'
+      ? pending.slice().reverse()
+      : watched.slice().sort((a, b) => new Date(b.watchedAt || 0) - new Date(a.watchedAt || 0));
+  // Ranking del grupo: vistas con al menos una nota, de mayor a menor media
+  const ranking = watched.filter((m) => m.avgScore != null).sort((a, b) => b.avgScore - a.avgScore).slice(0, 5);
 
   const leave = async () => {
     if (!confirm(isOwner && group.members.length > 1
@@ -110,6 +130,25 @@ export default function GroupDetail() {
             ))}
           </div>
 
+          {tab === 'watched' && ranking.length > 1 && (
+            <div className="mt-6 rounded-2xl border border-white/10 bg-telon p-5">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400">🏆 Ranking del grupo</h2>
+              <ol className="mt-3 space-y-2">
+                {ranking.map((m, i) => (
+                  <li key={m.tmdbId}>
+                    <button onClick={() => setRatingFor(m.tmdbId)} className="flex w-full items-center gap-3 rounded-lg p-1 text-left hover:bg-white/5">
+                      <span className="w-6 text-center font-display text-2xl text-zinc-500">{i + 1}</span>
+                      {m.poster && <img src={m.poster} alt="" className="h-12 w-8 rounded object-cover" />}
+                      <span className="flex-1 truncate text-sm font-medium">{m.title}</span>
+                      <span className="text-xs text-zinc-500">{m.ratings.length} votos</span>
+                      <ScoreBadge score={m.avgScore} />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
           {list.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-dashed border-white/15 p-10 text-center text-zinc-400">
               {tab === 'pending' ? (
@@ -128,10 +167,26 @@ export default function GroupDetail() {
                 return (
                   <li key={m.tmdbId} className="group">
                     <Link to={`/pelicula/${m.tmdbId}`} className="relative block aspect-[2/3] overflow-hidden rounded-xl bg-telon ring-1 ring-white/5 hover:ring-butaca-500/60">
-                      {m.poster && <img src={m.poster} alt={`Cartel de ${m.title}`} loading="lazy" className={`h-full w-full object-cover ${m.watched ? 'opacity-50 grayscale' : ''}`} />}
-                      {m.watched && <span className="absolute inset-0 grid place-items-center text-4xl">✓</span>}
+                      {m.poster && <img src={m.poster} alt={`Cartel de ${m.title}`} loading="lazy" className="h-full w-full object-cover" />}
+                      {m.watched && <span className="absolute right-2 top-2 rounded-full bg-black/75 px-2 py-0.5 text-xs text-emerald-400">✓ Vista</span>}
                     </Link>
-                    <h3 className="mt-2 line-clamp-1 text-sm font-medium">{m.title}</h3>
+                    {m.watched && (
+                      <button
+                        onClick={() => setRatingFor(m.tmdbId)}
+                        className="-mt-12 relative ml-2 flex items-center gap-2 rounded-lg bg-black/80 py-1 pl-1 pr-2 text-xs backdrop-blur hover:bg-black"
+                        aria-label={`Ver puntuaciones de ${m.title}`}
+                      >
+                        {m.avgScore != null ? (
+                          <>
+                            <ScoreBadge score={m.avgScore} size="h-7 min-w-7 text-sm" />
+                            <span className="text-zinc-300">{m.ratings.length} {m.ratings.length === 1 ? 'voto' : 'votos'}</span>
+                          </>
+                        ) : (
+                          <span className="px-1 py-1 text-zinc-300">Sin notas</span>
+                        )}
+                      </button>
+                    )}
+                    <h3 className={`line-clamp-1 text-sm font-medium ${m.watched ? 'mt-3' : 'mt-2'}`}>{m.title}</h3>
                     <div className="flex items-center justify-between text-xs text-zinc-500">
                       <span>{m.year} {m.runtime ? `· ${m.runtime} min` : ''}</span>
                       <Rating value={m.rating} />
@@ -141,12 +196,34 @@ export default function GroupDetail() {
                       <span className="truncate">@{m.addedBy?.username || 'antiguo miembro'}</span>
                     </div>
                     <div className="mt-2 flex gap-1">
-                      <button
-                        onClick={() => run(() => groupsApi.setWatched(group._id, m.tmdbId, !m.watched))}
-                        className="flex-1 rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-                      >
-                        {m.watched ? '↩ No vista' : '✓ Vista'}
-                      </button>
+                      {m.watched ? (
+                        <>
+                          <button
+                            onClick={() => setRatingFor(m.tmdbId)}
+                            className="flex-1 rounded-md bg-butaca-500/15 px-2 py-1 text-xs font-medium text-red-200 hover:bg-butaca-500/25"
+                          >
+                            {(() => {
+                              const mine = m.ratings.find((r) => r.user?._id === user._id);
+                              return mine ? `Tu nota: ${mine.score}` : '★ Puntuar';
+                            })()}
+                          </button>
+                          <button
+                            onClick={() => markWatched(m.tmdbId, false)}
+                            className="rounded-md bg-white/5 px-2 py-1 text-xs text-zinc-400 hover:bg-white/10"
+                            title="Volver a pendientes"
+                            aria-label={`Marcar ${m.title} como no vista`}
+                          >
+                            ↩
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => markWatched(m.tmdbId, true)}
+                          className="flex-1 rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                        >
+                          ✓ Vista
+                        </button>
+                      )}
                       {canRemove && (
                         <button
                           onClick={() => run(() => groupsApi.removeMovie(group._id, m.tmdbId))}
@@ -183,7 +260,16 @@ export default function GroupDetail() {
         <RandomPicker
           group={group}
           onClose={() => setModal(null)}
-          onWatched={(tmdbId) => run(() => groupsApi.setWatched(group._id, tmdbId, true))}
+          onWatched={(tmdbId) => markWatched(tmdbId, true)}
+        />
+      )}
+      {ratingFor && (
+        <RatingModal
+          group={group}
+          tmdbId={ratingFor}
+          me={user}
+          onChange={setGroup}
+          onClose={() => setRatingFor(null)}
         />
       )}
       {modal === 'add' && (

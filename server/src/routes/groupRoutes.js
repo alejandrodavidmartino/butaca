@@ -20,6 +20,8 @@ router.delete('/:id/members/:userId', g.removeMember);
 router.post('/:id/movies', g.addMovie);
 router.patch('/:id/movies/:tmdbId', g.updateMovie);
 router.delete('/:id/movies/:tmdbId', g.removeMovie);
+router.put('/:id/movies/:tmdbId/rating', g.rateMovie);
+router.delete('/:id/movies/:tmdbId/rating', g.unrateMovie);
 
 router.get('/:id/random', g.randomMovie);
 

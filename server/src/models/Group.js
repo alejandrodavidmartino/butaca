@@ -6,6 +6,22 @@ const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const generateInviteCode = () =>
   Array.from(crypto.randomBytes(6), (b) => ALPHABET[b % ALPHABET.length]).join('');
 
+// Puntuación de un miembro a una película vista del grupo
+const ratingSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    score: {
+      type: Number,
+      required: true,
+      min: [1, 'La nota mínima es 1'],
+      max: [10, 'La nota máxima es 10'],
+      validate: { validator: Number.isInteger, message: 'La nota debe ser un número entero' },
+    },
+    comment: { type: String, trim: true, maxlength: [280, 'El comentario puede tener 280 caracteres'], default: '' },
+  },
+  { timestamps: true }
+);
+
 // Película guardada dentro de un grupo. Guardamos una "foto" de los datos de TMDB
 // para pintar la lista sin tener que llamar a TMDB por cada película.
 const groupMovieSchema = new mongoose.Schema(
@@ -20,9 +36,18 @@ const groupMovieSchema = new mongoose.Schema(
     addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     watched: { type: Boolean, default: false },
     watchedAt: Date,
+    ratings: [ratingSchema],
   },
   { timestamps: { createdAt: 'addedAt', updatedAt: false } }
 );
+
+// Nota media del grupo (campo virtual: se calcula, no se guarda)
+groupMovieSchema.virtual('avgScore').get(function () {
+  if (!this.ratings?.length) return null;
+  const sum = this.ratings.reduce((acc, r) => acc + r.score, 0);
+  return Math.round((sum / this.ratings.length) * 10) / 10;
+});
+groupMovieSchema.set('toJSON', { virtuals: true });
 
 const groupSchema = new mongoose.Schema(
   {

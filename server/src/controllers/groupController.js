@@ -19,6 +19,7 @@ const populated = (group) =>
     { path: 'owner', select: USER_FIELDS },
     { path: 'members', select: USER_FIELDS },
     { path: 'movies.addedBy', select: USER_FIELDS },
+    { path: 'movies.ratings.user', select: USER_FIELDS },
   ]);
 
 // GET /api/groups  -> mis grupos (resumen)
@@ -173,6 +174,43 @@ export async function updateMovie(req, res) {
 
   movie.watched = Boolean(req.body.watched);
   movie.watchedAt = movie.watched ? new Date() : undefined;
+  await group.save();
+  res.json(await populated(group));
+}
+
+// Busca una película del grupo o lanza 404
+function findMovie(group, tmdbId) {
+  const movie = group.movies.find((m) => m.tmdbId === Number(tmdbId));
+  if (!movie) throw new HttpError(404, 'Esa película no está en el grupo');
+  return movie;
+}
+
+// PUT /api/groups/:id/movies/:tmdbId/rating  { score, comment }
+// Crea o actualiza MI nota. Solo se pueden puntuar películas vistas.
+export async function rateMovie(req, res) {
+  const group = await loadGroup(req.params.id, req.user._id);
+  const movie = findMovie(group, req.params.tmdbId);
+  if (!movie.watched) throw new HttpError(400, 'Marca la película como vista antes de puntuarla');
+
+  const score = Number(req.body.score);
+  const comment = String(req.body.comment || '').slice(0, 280);
+  const mine = movie.ratings.find((r) => String(r.user) === String(req.user._id));
+
+  if (mine) {
+    mine.score = score;
+    mine.comment = comment;
+  } else {
+    movie.ratings.push({ user: req.user._id, score, comment });
+  }
+  await group.save(); // aquí Mongoose valida que la nota sea un entero de 1 a 10
+  res.json(await populated(group));
+}
+
+// DELETE /api/groups/:id/movies/:tmdbId/rating  -> borrar MI nota
+export async function unrateMovie(req, res) {
+  const group = await loadGroup(req.params.id, req.user._id);
+  const movie = findMovie(group, req.params.tmdbId);
+  movie.ratings = movie.ratings.filter((r) => String(r.user) !== String(req.user._id));
   await group.save();
   res.json(await populated(group));
 }
