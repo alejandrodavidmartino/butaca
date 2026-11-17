@@ -134,3 +134,19 @@ export async function getMovieDetail(id) {
     similar: m.similar?.results?.slice(0, 12).map(toMovieCard) || [],
   };
 }
+
+// Película aleatoria "buena": nota ≥ 7 y bastantes votos, de una página al azar
+export async function randomGoodMovie(genre) {
+  const params = {
+    sort_by: 'popularity.desc',
+    'vote_average.gte': 7,
+    'vote_count.gte': 500,
+    with_genres: genre || undefined,
+    include_adult: false,
+  };
+  const first = await get('/discover/movie', { ...params, page: 1 });
+  const page = 1 + Math.floor(Math.random() * Math.min(first.total_pages, 40));
+  const data = page === 1 ? first : await get('/discover/movie', { ...params, page });
+  const pool = data.results.filter((m) => m.poster_path);
+  return toMovieCard(pool[Math.floor(Math.random() * pool.length)]);
+}

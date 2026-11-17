@@ -22,7 +22,7 @@ export default function Navbar() {
     <>
       <NavLink to="/" end className={linkClass} onClick={() => setOpen(false)}>Inicio</NavLink>
       <NavLink to="/peliculas" className={linkClass} onClick={() => setOpen(false)}>Películas</NavLink>
-      {user && <NavLink to="/mi-butaca" className={linkClass} onClick={() => setOpen(false)}>Mi Butaca</NavLink>}
+      {user && <NavLink to="/grupos" className={linkClass} onClick={() => setOpen(false)}>Mis grupos</NavLink>}
       {isAdmin && <NavLink to="/admin" className={linkClass} onClick={() => setOpen(false)}>Admin</NavLink>}
     </>
   );
@@ -38,7 +38,7 @@ export default function Navbar() {
           {user ? (
             <>
               <span className="text-sm text-zinc-400">
-                Hola, <strong className="text-white">{user.name}</strong>
+                <strong className="text-white">@{user.username}</strong>
               </span>
               <button onClick={handleLogout} className="btn-ghost">Salir</button>
             </>

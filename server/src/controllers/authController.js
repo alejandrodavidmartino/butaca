@@ -8,25 +8,34 @@ const signToken = (user) =>
 
 // POST /api/auth/register
 export async function register(req, res) {
-  const { name, email, password } = req.body;
+  const { name, username, email, password } = req.body;
+  if (!username) throw new HttpError(400, 'El nombre de usuario es obligatorio');
 
-  const exists = await User.findOne({ email: email?.toLowerCase() });
-  if (exists) throw new HttpError(409, 'Ya existe una cuenta con ese email');
+  if (await User.exists({ email: email?.toLowerCase() })) {
+    throw new HttpError(409, 'Ya existe una cuenta con ese email');
+  }
+  if (await User.exists({ username: username.toLowerCase() })) {
+    throw new HttpError(409, 'Ese nombre de usuario ya está cogido');
+  }
 
   // El rol NO se lee del body: nadie puede registrarse como admin
-  const user = await User.create({ name, email, password });
+  const user = await User.create({ name, username, email, password });
   res.status(201).json({ token: signToken(user), user });
 }
 
 // POST /api/auth/login
 export async function login(req, res) {
-  const { email, password } = req.body;
-  if (!email || !password) throw new HttpError(400, 'Email y contraseña son obligatorios');
+  // "login" puede ser el email o el @usuario
+  const login = (req.body.login || req.body.email || '').trim().toLowerCase().replace(/^@/, '');
+  const { password } = req.body;
+  if (!login || !password) throw new HttpError(400, 'Usuario y contraseña son obligatorios');
 
   // select('+password') porque en el modelo está oculta por defecto
-  const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+  const user = await User.findOne(login.includes('@') ? { email: login } : { username: login }).select(
+    '+password'
+  );
   if (!user || !(await user.comparePassword(password))) {
-    throw new HttpError(401, 'Email o contraseña incorrectos');
+    throw new HttpError(401, 'Usuario o contraseña incorrectos');
   }
   if (!user.active) throw new HttpError(403, 'Tu cuenta está desactivada');
 

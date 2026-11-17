@@ -1,11 +1,13 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Movies from './pages/Movies';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import MyButaca from './pages/MyButaca';
+import MyGroups from './pages/MyGroups';
+import GroupDetail from './pages/GroupDetail';
+import JoinGroup from './pages/JoinGroup';
 import MovieDetail from './pages/MovieDetail';
 import NotFound from './pages/NotFound';
 import AdminDashboard from './admin/AdminDashboard';
@@ -23,7 +25,10 @@ export default function App() {
 
         {/* Solo usuarios registrados */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/mi-butaca" element={<MyButaca />} />
+          <Route path="/grupos" element={<MyGroups />} />
+          <Route path="/grupos/:id" element={<GroupDetail />} />
+          <Route path="/unirse/:code" element={<JoinGroup />} />
+          <Route path="/mi-butaca" element={<Navigate to="/grupos" replace />} />
         </Route>
 
         {/* Solo administradores */}

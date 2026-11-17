@@ -12,4 +12,7 @@ export const discoverMovies = (params) =>
 
 export const getGenres = () => api.get('/movies/genres').then((r) => r.data);
 
+export const getRandomMovie = (genre) =>
+  api.get('/movies/random', { params: { genre } }).then((r) => r.data);
+
 export const getMovie = (id) => api.get(`/movies/${id}`).then((r) => r.data);

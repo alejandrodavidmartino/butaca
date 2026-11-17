@@ -5,6 +5,9 @@ import cors from 'cors';
 import { connectDB } from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import movieRoutes from './routes/movieRoutes.js';
+import groupRoutes from './routes/groupRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import User from './models/User.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -22,6 +25,8 @@ app.get('/api/health', (req, res) => {
 // Rutas de la API
 app.use('/api/auth', authRoutes);
 app.use('/api/movies', movieRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/users', userRoutes);
 
 // Manejo de errores (siempre al final)
 app.use(notFound);
@@ -34,7 +39,10 @@ if (!process.env.TMDB_READ_TOKEN && !process.env.TMDB_API_KEY) {
 
 // Primero conectamos a la base de datos y después arrancamos el servidor
 connectDB()
-  .then(() => {
+  .then(async () => {
+    // Cuentas creadas antes de existir el @usuario: les generamos uno
+    for (const u of await User.find({ username: { $exists: false } })) await u.save();
+
     app.listen(PORT, () => console.log(`🎬 Butaca API escuchando en http://localhost:${PORT}`));
   })
   .catch((err) => {

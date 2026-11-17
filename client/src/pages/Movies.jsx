@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import useFetch from '../hooks/useFetch';
-import { discoverMovies, getGenres, searchMovies } from '../services/movies';
+import { discoverMovies, getGenres, getRandomMovie, searchMovies } from '../services/movies';
 import MovieCard from '../components/MovieCard';
 import Pagination from '../components/Pagination';
 import ErrorMessage from '../components/ErrorMessage';
@@ -23,6 +23,19 @@ export default function Movies() {
   const page = Number(params.get('page')) || 1;
 
   const [text, setText] = useState(q);
+  const [surprising, setSurprising] = useState(false);
+  const navigate = useNavigate();
+
+  // "Sorpréndeme": película buena al azar (del género elegido, si hay)
+  const surprise = async () => {
+    setSurprising(true);
+    try {
+      const movie = await getRandomMovie(genre || undefined);
+      navigate(`/pelicula/${movie.id}`);
+    } catch {
+      setSurprising(false);
+    }
+  };
   useEffect(() => setText(q), [q]);
 
   const genres = useFetch(getGenres);
@@ -49,7 +62,12 @@ export default function Movies() {
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10">
-      <h1 className="font-display text-5xl tracking-wide">Películas</h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h1 className="font-display text-5xl tracking-wide">Películas</h1>
+        <button onClick={surprise} disabled={surprising} className="btn-ghost border-butaca-500/50">
+          {surprising ? 'Buscando…' : '🎲 Sorpréndeme'}
+        </button>
+      </div>
 
       {/* ---------- Buscador ---------- */}
       <form onSubmit={handleSearch} className="mt-6 flex gap-2" role="search">

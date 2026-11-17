@@ -9,7 +9,7 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ login: '', password: '' });
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -20,9 +20,9 @@ export default function Login() {
     setError('');
     setSending(true);
     try {
-      const user = await login(form.email, form.password);
+      const user = await login(form.login, form.password);
       // Volvemos a la página que quería ver, o a su zona / al panel si es admin
-      const fallback = user.role === 'admin' ? '/admin' : '/mi-butaca';
+      const fallback = user.role === 'admin' ? '/admin' : '/grupos';
       navigate(location.state?.from || fallback, { replace: true });
     } catch (err) {
       setError(getErrorMessage(err));
@@ -34,8 +34,8 @@ export default function Login() {
   return (
     <AuthCard title="Bienvenido de nuevo" subtitle="Tu butaca te estaba esperando">
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        <FormField label="Email" id="email" type="email" autoComplete="email"
-          value={form.email} onChange={handleChange} required />
+        <FormField label="Email o usuario" id="login" autoComplete="username"
+          placeholder="tu@email.com o @usuario" value={form.login} onChange={handleChange} required />
         <FormField label="Contraseña" id="password" type="password" autoComplete="current-password"
           value={form.password} onChange={handleChange} required />
 

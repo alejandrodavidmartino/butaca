@@ -40,3 +40,8 @@ export async function detail(req, res) {
   if (!id) throw new HttpError(400, 'Identificador no válido');
   res.json(await tmdb.getMovieDetail(id));
 }
+
+// GET /api/movies/random?genre=35  -> "Sorpréndeme"
+export async function random(req, res) {
+  res.json(await tmdb.randomGoodMovie(parseInt(req.query.genre) || undefined));
+}

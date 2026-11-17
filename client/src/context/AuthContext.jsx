@@ -26,11 +26,11 @@ export function AuthProvider({ children }) {
     return user;
   };
 
-  const login = async (email, password) =>
-    saveSession((await api.post('/auth/login', { email, password })).data);
+  // "login" puede ser el email o el @usuario
+  const login = async (login, password) =>
+    saveSession((await api.post('/auth/login', { login, password })).data);
 
-  const register = async (name, email, password) =>
-    saveSession((await api.post('/auth/register', { name, email, password })).data);
+  const register = async (form) => saveSession((await api.post('/auth/register', form)).data);
 
   const logout = () => {
     localStorage.removeItem('butaca_token');

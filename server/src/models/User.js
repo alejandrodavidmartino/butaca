@@ -9,6 +9,14 @@ const userSchema = new mongoose.Schema(
       trim: true,
       maxlength: 50,
     },
+    username: {
+      type: String,
+      required: [true, 'El nombre de usuario es obligatorio'],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^[a-z0-9_]{3,20}$/, 'El usuario debe tener 3-20 caracteres: letras, números o _'],
+    },
     email: {
       type: String,
       required: [true, 'El email es obligatorio'],
@@ -30,6 +38,14 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true } // añade createdAt y updatedAt
 );
+
+// Si un usuario no tiene @usuario (cuentas antiguas o admins creados por script),
+// generamos uno a partir del email: ana.lopez@gmail.com -> ana_lopez_4821
+userSchema.pre('validate', function () {
+  if (this.username || !this.email) return;
+  const base = this.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 15);
+  this.username = `${base.padEnd(3, '_')}_${Math.floor(1000 + Math.random() * 9000)}`;
+});
 
 // Antes de guardar, ciframos la contraseña si ha cambiado
 userSchema.pre('save', async function () {

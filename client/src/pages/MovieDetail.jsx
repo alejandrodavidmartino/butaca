@@ -6,6 +6,8 @@ import Spinner from '../components/Spinner';
 import ErrorMessage from '../components/ErrorMessage';
 import MovieRow from '../components/MovieRow';
 import Rating from '../components/Rating';
+import AddToGroup from '../components/AddToGroup';
+import { useAuth } from '../context/AuthContext';
 
 // Pasa minutos a "2 h 2 min"
 const formatRuntime = (min) => (min ? `${Math.floor(min / 60)} h ${min % 60} min` : null);
@@ -14,6 +16,7 @@ export default function MovieDetail() {
   const { id } = useParams();
   const { data: movie, loading, error } = useFetch(() => getMovie(id), [id]);
   const [showTrailer, setShowTrailer] = useState(false);
+  const { user } = useAuth();
 
   if (loading) return <Spinner />;
   if (error) return <ErrorMessage message={error} />;
@@ -81,7 +84,13 @@ export default function MovieDetail() {
                   ▶ Ver tráiler
                 </button>
               )}
-              {/* Favoritos y reseñas llegarán en el siguiente paso */}
+              {user ? (
+                <AddToGroup tmdbId={movie.id} />
+              ) : (
+                <Link to="/login" state={{ from: `/pelicula/${movie.id}` }} className="btn-ghost px-5 py-3">
+                  Inicia sesión para añadirla a un grupo
+                </Link>
+              )}
             </div>
 
             <WatchProviders watch={movie.watch} />
