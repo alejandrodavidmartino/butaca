@@ -88,7 +88,7 @@ export default function TrendingHero({ movies = [], loading }) {
 
         {/* ---------- Carrusel pequeño para elegir ---------- */}
         <div className="-mx-4 mt-2 pb-6">
-          {!loading && <FocusCarousel movies={movies} size="sm" align="start" showInfo={false} initialIndex={0} onActiveChange={handleActive} label="Tendencias de la semana" />}
+          {!loading && <FocusCarousel movies={movies} size="sm" showInfo={false} initialIndex={0} onActiveChange={handleActive} label="Tendencias de la semana" />}
         </div>
       </div>
     </section>

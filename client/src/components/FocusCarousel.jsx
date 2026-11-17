@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useReducedMotion from '../hooks/useReducedMotion';
 import Rating from './Rating';
 
 const GAP = 12; // separación entre carteles (px)
 const EDGE = 16; // margen izquierdo cuando align="start"
+const COPIES = 3; // para el bucle infinito pintamos la lista 3 veces y nos movemos en la del medio
 
 // Tamaño del cartel central según el ancho de pantalla
 const cardWidthFor = (size, viewport) => {
@@ -13,14 +14,19 @@ const cardWidthFor = (size, viewport) => {
 };
 
 /**
- * Carrusel "con foco": la película central se ve más grande y nítida,
- * las laterales más pequeñas y apagadas según su distancia al centro.
+ * Carrusel "con foco": la película central se ve más grande, las laterales algo más pequeñas
+ * y suaves según su distancia al centro (sin oscurecer demasiado, para no cansar la vista).
  *
+ * - Infinito: al pasar de la última se vuelve a la primera (y al revés).
  * - Ratón: se arrastra con inercia y, al soltar, se centra sola en la más cercana.
- * - Táctil: deslizamiento nativo con "snap" al centro.
- * - Teclado: ← →. Clic en una lateral = la trae al centro; clic en la central = abre la ficha.
+ * - Táctil: deslizamiento nativo con "snap".
+ * - Teclado: ← →. Clic en una lateral = la trae al foco; clic en la del foco = abre la ficha.
  * - Con "reducir movimiento" no hay escalado ni desplazamientos animados.
- * - align="start": el foco está a la izquierda (útil cuando hay texto encima alineado a la izquierda).
+ * - align="start": el foco está a la izquierda (para el escaparate, alineado con el texto).
+ *
+ * Cómo funciona el bucle: pintamos [lista, lista, lista]. Siempre que el carrusel se detiene
+ * fuera de la copia central, saltamos sin animación a la misma película de la copia central.
+ * Como las tres copias son idénticas, el salto es invisible.
  */
 export default function FocusCarousel({
   movies = [],
@@ -29,23 +35,33 @@ export default function FocusCarousel({
   initialIndex = 2,
   onActiveChange,
   label = 'Carrusel de películas',
-  align = 'center', // 'center': foco en el centro | 'start': foco a la izquierda (para el escaparate)
+  align = 'center',
 }) {
   const track = useRef(null);
   const cards = useRef([]);
   const drag = useRef({ down: false, moved: false, startX: 0, startLeft: 0, lastX: 0, lastT: 0, velocity: 0 });
   const frame = useRef(0);
+  const settleTimer = useRef(0);
   const reduced = useReducedMotion();
 
-  const [active, setActive] = useState(0);
+  const n = movies.length;
+  const loop = n >= 4; // con muy pocas películas no tiene sentido el bucle
+  const items = useMemo(() => (loop ? Array.from({ length: COPIES }, () => movies).flat() : movies), [movies, loop]);
+  const offset = loop ? n : 0; // índice donde empieza la copia central
+
+  const [active, setActive] = useState(offset); // índice dentro de "items"
   const [cardW, setCardW] = useState(cardWidthFor(size, 1280));
   const [pad, setPad] = useState(0);
   const isStart = align === 'start';
+  const real = n ? ((active % n) + n) % n : 0; // índice real en "movies"
 
-  // Punto de la pantalla (en coordenadas del scroll) donde está el "foco"
-  const focusPoint = (el) => (isStart ? el.scrollLeft + EDGE + cardW / 2 : el.scrollLeft + el.clientWidth / 2);
+  // Punto (en coordenadas del scroll) donde está el foco
+  const focusPoint = useCallback(
+    (el) => (isStart ? el.scrollLeft + EDGE + cardW / 2 : el.scrollLeft + el.clientWidth / 2),
+    [isStart, cardW]
+  );
 
-  // ---------- Medidas: ancho de cartel y margen lateral para poder centrar el primero y el último ----------
+  // ---------- Medidas ----------
   useLayoutEffect(() => {
     const measure = () => {
       const el = track.current;
@@ -59,7 +75,7 @@ export default function FocusCarousel({
     return () => window.removeEventListener('resize', measure);
   }, [size]);
 
-  // ---------- Pinta escala/opacidad de cada cartel según su distancia al centro ----------
+  // ---------- Escala y opacidad según la distancia al foco ----------
   const paint = useCallback(() => {
     const el = track.current;
     if (!el) return;
@@ -76,53 +92,96 @@ export default function FocusCarousel({
         best = i;
       }
       const t = Math.min(dist, 2);
-      card.style.transform = reduced ? 'none' : `scale(${1 - t * 0.11})`; // 1 → 0.89 → 0.78
-      card.style.opacity = String(1 - t * 0.27); // 1 → 0.73 → 0.46
+      card.style.transform = reduced ? 'none' : `scale(${1 - t * 0.08})`; // 1 → 0.92 → 0.84
+      card.style.opacity = String(1 - t * 0.1); // 1 → 0.9 → 0.8 (suave para la vista)
       card.style.zIndex = String(10 - Math.round(t * 2));
     });
 
     setActive((prev) => (prev === best ? prev : best));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduced, isStart, cardW]);
+  }, [reduced, focusPoint]);
+
+  // Posición de scroll que pone la tarjeta i en el foco
+  const leftFor = useCallback(
+    (i) => {
+      const el = track.current;
+      const card = cards.current[i];
+      if (!el || !card) return null;
+      return isStart ? card.offsetLeft - EDGE : card.offsetLeft + card.offsetWidth / 2 - el.clientWidth / 2;
+    },
+    [isStart]
+  );
+
+  const goTo = useCallback(
+    (i, smooth = true) => {
+      const left = leftFor(i);
+      if (left == null) return;
+      track.current.scrollTo({ left, behavior: smooth && !reduced ? 'smooth' : 'auto' });
+    },
+    [leftFor, reduced]
+  );
+
+  // ---------- Bucle: si nos paramos fuera de la copia central, saltamos a ella sin que se note ----------
+  const recenter = useCallback(() => {
+    const el = track.current;
+    if (!loop || !el || drag.current.down) return;
+    const center = focusPoint(el);
+    // Índice más cercano al foco ahora mismo
+    let current = 0;
+    let bestDist = Infinity;
+    cards.current.forEach((card, i) => {
+      if (!card) return;
+      const d = Math.abs(card.offsetLeft + card.offsetWidth / 2 - center);
+      if (d < bestDist) {
+        bestDist = d;
+        current = i;
+      }
+    });
+    if (current >= n && current < 2 * n) return; // ya estamos en la copia central
+
+    const target = current < n ? current + n : current - n;
+    const shift = cards.current[target].offsetLeft - cards.current[current].offsetLeft;
+    // Sin transiciones ni "snap" durante el salto para que sea invisible
+    el.dataset.jumping = 'true';
+    el.style.scrollSnapType = 'none';
+    el.style.scrollBehavior = 'auto';
+    el.scrollLeft += shift;
+    paint();
+    requestAnimationFrame(() => {
+      el.style.scrollSnapType = '';
+      el.style.scrollBehavior = '';
+      delete el.dataset.jumping;
+    });
+  }, [loop, n, focusPoint, paint]);
 
   const onScroll = () => {
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(paint);
+    // Cuando el desplazamiento se detiene, comprobamos si hay que "dar la vuelta"
+    clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(recenter, 160);
   };
 
-  // ---------- Ir a una película concreta ----------
-  const goTo = useCallback(
-    (i, smooth = true) => {
-      const el = track.current;
-      const card = cards.current[i];
-      if (!el || !card) return;
-      el.scrollTo({
-        left: isStart ? card.offsetLeft - EDGE : card.offsetLeft + card.offsetWidth / 2 - el.clientWidth / 2,
-        behavior: smooth && !reduced ? 'smooth' : 'auto',
-      });
-    },
-    [reduced, isStart]
-  );
-
-  // Posición inicial (sin animación) cuando llegan las películas o cambia el tamaño
+  // Posición inicial (sin animación) en la copia central
   useLayoutEffect(() => {
-    if (!movies.length) return;
-    goTo(Math.min(initialIndex, movies.length - 1), false);
+    if (!n) return;
+    goTo(offset + Math.min(initialIndex, n - 1), false);
     paint();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [movies, pad]);
 
   useEffect(() => {
-    if (movies[active]) onActiveChange?.(movies[active], active);
+    if (movies[real]) onActiveChange?.(movies[real], real);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, movies]);
+  }, [real, movies]);
+
+  useEffect(() => () => clearTimeout(settleTimer.current), []);
 
   // ---------- Arrastre con ratón (el táctil lo hace el navegador) ----------
   const onPointerDown = (e) => {
     if (e.pointerType !== 'mouse' || e.button !== 0) return;
     const el = track.current;
     drag.current = { down: true, moved: false, startX: e.clientX, startLeft: el.scrollLeft, lastX: e.clientX, lastT: performance.now(), velocity: 0 };
-    el.style.scrollSnapType = 'none'; // sin "snap" mientras arrastramos
+    el.style.scrollSnapType = 'none';
     el.style.scrollBehavior = 'auto';
   };
 
@@ -135,7 +194,6 @@ export default function FocusCarousel({
       track.current.setPointerCapture?.(e.pointerId);
     }
     track.current.scrollLeft = d.startLeft - dx;
-    // Velocidad para la inercia (px/ms)
     const now = performance.now();
     const dt = now - d.lastT || 1;
     d.velocity = 0.8 * ((d.lastX - e.clientX) / dt) + 0.2 * d.velocity;
@@ -149,7 +207,7 @@ export default function FocusCarousel({
     d.down = false;
     const el = track.current;
 
-    // Inercia: proyectamos hacia dónde iría y centramos la película más cercana a ese punto
+    // Inercia: proyectamos hacia dónde iría y llevamos al foco la tarjeta más cercana a ese punto
     const projected = focusPoint(el) + (reduced ? 0 : d.velocity * 220);
     let target = active;
     let bestDist = Infinity;
@@ -163,13 +221,11 @@ export default function FocusCarousel({
     });
     el.style.scrollBehavior = '';
     goTo(target);
-    // Reactivamos el snap cuando ha terminado el desplazamiento suave
     setTimeout(() => {
       if (track.current) track.current.style.scrollSnapType = '';
     }, 450);
   };
 
-  // Si se ha arrastrado, el "clic" de soltar no debe abrir la ficha
   const onClickCapture = (e) => {
     if (drag.current.moved) {
       e.preventDefault();
@@ -178,18 +234,31 @@ export default function FocusCarousel({
     }
   };
 
+  // Siguiente / anterior (con bucle; sin bucle se detiene en los extremos)
+  const step = (dir) => {
+    const next = active + dir;
+    if (!loop && (next < 0 || next >= n)) return;
+    goTo(next);
+  };
+
   const onKeyDown = (e) => {
     if (e.key === 'ArrowRight') {
       e.preventDefault();
-      goTo(Math.min(active + 1, movies.length - 1));
+      step(1);
     }
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      goTo(Math.max(active - 1, 0));
+      step(-1);
     }
   };
 
-  const current = movies[active];
+  // Salto desde los puntos: a la copia más cercana de esa película
+  const jumpTo = (i) => {
+    const base = active - real;
+    goTo(base + i);
+  };
+
+  const current = movies[real];
 
   return (
     <div className="relative" role="region" aria-roledescription="carrusel" aria-label={label}>
@@ -205,10 +274,10 @@ export default function FocusCarousel({
           onPointerLeave={onPointerUp}
           onClickCapture={onClickCapture}
           onKeyDown={onKeyDown}
-          className={`relative flex cursor-grab snap-x snap-mandatory items-center overflow-x-auto overscroll-x-contain py-4 outline-none select-none active:cursor-grabbing [scrollbar-width:none] focus-visible:ring-2 focus-visible:ring-butaca-500/60 [&::-webkit-scrollbar]:hidden ${
+          className={`group/track relative flex cursor-grab snap-x snap-mandatory items-center overflow-x-auto overscroll-x-contain py-4 outline-none select-none active:cursor-grabbing [scrollbar-width:none] focus-visible:ring-2 focus-visible:ring-butaca-500/60 [&::-webkit-scrollbar]:hidden ${
             isStart
-              ? '[mask-image:linear-gradient(to_right,black_80%,transparent)]'
-              : '[mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]'
+              ? '[mask-image:linear-gradient(to_right,black_85%,transparent)]'
+              : '[mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)]'
           }`}
           style={
             isStart
@@ -216,49 +285,56 @@ export default function FocusCarousel({
               : { gap: GAP, paddingInline: pad }
           }
         >
-          {movies.map((m, i) => (
-            <Link
-              key={m.id}
-              ref={(el) => (cards.current[i] = el)}
-              to={`/pelicula/${m.id}`}
-              draggable="false"
-              onClick={(e) => {
-                // Clic en una lateral: primero la traemos al centro
-                if (i !== active) {
-                  e.preventDefault();
-                  goTo(i);
-                }
-              }}
-              aria-label={`${m.title}${i === active ? '' : ' (traer al centro)'}`}
-              aria-current={i === active ? 'true' : undefined}
-              className={`relative shrink-0 overflow-hidden rounded-xl bg-telon ring-1 ring-white/10 will-change-transform ${isStart ? 'snap-start origin-left' : 'snap-center origin-center'}`}
-              style={{
-                width: cardW,
-                aspectRatio: '2 / 3',
-                transition: reduced ? 'none' : 'transform 220ms cubic-bezier(.2,.7,.3,1), opacity 220ms ease-out, box-shadow 220ms',
-                boxShadow: i === active ? '0 18px 40px -12px rgba(200,30,58,.45)' : 'none',
-              }}
-            >
-              {m.poster ? (
-                <img src={m.poster} alt="" loading="lazy" draggable="false" className="h-full w-full object-cover" />
-              ) : (
-                <span className="grid h-full place-items-center p-2 text-center text-xs text-zinc-400">{m.title}</span>
-              )}
-              {size !== 'sm' && m.rating && (
-                <span className="absolute left-2 top-2 rounded-md bg-black/75 px-1.5 py-0.5 text-xs backdrop-blur">
-                  <Rating value={m.rating} />
-                </span>
-              )}
-            </Link>
-          ))}
+          {items.map((m, i) => {
+            const isClone = loop && (i < n || i >= 2 * n);
+            const isActive = i === active;
+            return (
+              <Link
+                key={`${m.id}-${i}`}
+                ref={(el) => (cards.current[i] = el)}
+                to={`/pelicula/${m.id}`}
+                draggable="false"
+                tabIndex={isClone ? -1 : undefined}
+                aria-hidden={isClone || undefined}
+                onClick={(e) => {
+                  // Clic en una lateral: primero la traemos al foco
+                  if (!isActive) {
+                    e.preventDefault();
+                    goTo(i);
+                  }
+                }}
+                aria-label={`${m.title}${isActive ? '' : ' (traer al centro)'}`}
+                aria-current={isActive ? 'true' : undefined}
+                className={`relative shrink-0 overflow-hidden rounded-xl bg-telon ring-1 ring-white/10 will-change-transform group-data-[jumping]/track:!transition-none ${
+                  isStart ? 'snap-start origin-left' : 'snap-center origin-center'
+                }`}
+                style={{
+                  width: cardW,
+                  aspectRatio: '2 / 3',
+                  transition: reduced ? 'none' : 'transform 220ms cubic-bezier(.2,.7,.3,1), opacity 220ms ease-out, box-shadow 220ms',
+                  boxShadow: isActive ? '0 18px 40px -12px rgba(200,30,58,.45)' : 'none',
+                }}
+              >
+                {m.poster ? (
+                  <img src={m.poster} alt="" loading="lazy" draggable="false" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="grid h-full place-items-center p-2 text-center text-xs text-zinc-400">{m.title}</span>
+                )}
+                {size !== 'sm' && m.rating && (
+                  <span className="absolute left-2 top-2 rounded-md bg-black/75 px-1.5 py-0.5 text-xs backdrop-blur">
+                    <Rating value={m.rating} />
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </div>
 
-        {/* Flechas (alternativa al arrastre) */}
-        <CarouselArrow dir="prev" disabled={active === 0} onClick={() => goTo(active - 1)} />
-        <CarouselArrow dir="next" disabled={active >= movies.length - 1} onClick={() => goTo(active + 1)} />
+        <CarouselArrow dir="prev" disabled={!loop && real === 0} onClick={() => step(-1)} />
+        <CarouselArrow dir="next" disabled={!loop && real >= n - 1} onClick={() => step(1)} />
       </div>
 
-      {/* Información de la película central */}
+      {/* Información de la película en el foco */}
       {showInfo && current && (
         <div key={current.id} className="mt-1 text-center motion-safe:animate-[fade-up_220ms_ease-out]" aria-live="polite">
           <Link to={`/pelicula/${current.id}`} className="font-semibold hover:text-butaca-500">{current.title}</Link>
@@ -267,14 +343,14 @@ export default function FocusCarousel({
       )}
 
       {/* Indicador de posición */}
-      {movies.length > 1 && movies.length <= 24 && (
+      {n > 1 && n <= 24 && (
         <div className={`mt-3 flex gap-1.5 ${isStart ? 'justify-start px-4' : 'justify-center'}`} aria-hidden="true">
           {movies.map((m, i) => (
             <button
               key={m.id}
               tabIndex={-1}
-              onClick={() => goTo(i)}
-              className={`h-1.5 rounded-full transition-all duration-200 ${i === active ? 'w-5 bg-butaca-500' : 'w-1.5 bg-white/20 hover:bg-white/40'}`}
+              onClick={() => jumpTo(i)}
+              className={`h-1.5 rounded-full transition-all duration-200 ${i === real ? 'w-5 bg-butaca-500' : 'w-1.5 bg-white/20 hover:bg-white/40'}`}
             />
           ))}
         </div>

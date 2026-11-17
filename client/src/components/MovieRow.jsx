@@ -18,7 +18,7 @@ export default function MovieRow({ title, movies = [], link, loading }) {
             <div
               key={i}
               className="aspect-[2/3] w-[150px] shrink-0 animate-pulse rounded-xl bg-telon sm:w-[196px]"
-              style={{ opacity: o, transform: `scale(${o === 1 ? 1 : o > 0.5 ? 0.89 : 0.78})` }}
+              style={{ opacity: o === 1 ? 1 : o > 0.5 ? 0.9 : 0.8, transform: `scale(${o === 1 ? 1 : o > 0.5 ? 0.92 : 0.84})` }}
             />
           ))}
         </div>
