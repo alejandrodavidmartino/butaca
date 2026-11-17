@@ -1,4 +1,5 @@
 import Group from '../models/Group.js';
+import WatchedMovie from '../models/WatchedMovie.js';
 import { askGeminiJSON } from '../services/gemini.js';
 import { findMovie, getMoviePlatforms, discoverOnPlatforms } from '../services/tmdb.js';
 import { PLATFORMS, PLATFORM_KEYS } from '../config/platforms.js';
@@ -107,6 +108,19 @@ export async function sommelier(req, res) {
     throw new HttpError(400, 'Cuéntame qué te apetece ver');
   }
 
+  // ---------- Gustos del usuario según su diario "Mis vistas" ----------
+  const diary = await WatchedMovie.find({ user: req.user._id }).sort({ watchedAt: -1 }).limit(300).lean();
+  const seenIds = new Set(diary.map((m) => m.tmdbId));
+  const loved = diary.filter((m) => m.score >= 8).sort((a, b) => b.score - a.score).slice(0, 8);
+  const hated = diary.filter((m) => m.score != null && m.score <= 4).slice(0, 5);
+  const tasteNote = diary.length
+    ? `\nGustos del usuario (de su diario):` +
+      (loved.length ? `\n- Le encantaron: ${loved.map((m) => `${m.title} (${m.score}/10)`).join(', ')}.` : '') +
+      (hated.length ? `\n- No le gustaron: ${hated.map((m) => `${m.title} (${m.score}/10)`).join(', ')}.` : '') +
+      `\n- YA HA VISTO (no las recomiendes): ${diary.slice(0, 40).map((m) => m.title).join(', ')}.` +
+      '\nUsa estos gustos con naturalidad (p. ej. "como te encantó X...") solo si encajan con lo que pide.'
+    : '';
+
   // ---------- Paso 1: Ratatús propone películas ----------
   // Con plataformas pedimos más candidatas (12), porque luego filtramos las que no estén disponibles
   const count = platforms.length ? 12 : WANTED;
@@ -116,11 +130,12 @@ export async function sommelier(req, res) {
       'En "message" NO digas cuántas películas recomiendas (luego filtramos las que no estén disponibles).'
     : '';
   // Un único mensaje de sistema: si mandamos varios, el modelo a veces ignora el formato
-  const system = `${SOMMELIER_PROMPT.replace('exactamente 5', `exactamente ${count}`)}\n\nEl usuario se llama ${req.user.name}.${platformNote}`;
+  const system = `${SOMMELIER_PROMPT.replace('exactamente 5', `exactamente ${count}`)}\n\nEl usuario se llama ${req.user.name}.${platformNote}${tasteNote}`;
   const answer = await askGeminiJSON([{ role: 'system', content: system }, ...messages], { schema: RECOMMENDATION_SCHEMA });
 
   // ---------- Paso 2: comprobamos en TMDB dónde está cada una ----------
-  let recommendations = await withPlatforms(await resolveRecommendations(answer.recommendations));
+  // (quitamos las que ya ha visto, por si la IA se despista)
+  let recommendations = await withPlatforms(await resolveRecommendations(answer.recommendations, seenIds));
   let message = String(answer.message || 'Aquí tienes mis propuestas:');
   let usedCatalog = false;
 
@@ -131,7 +146,7 @@ export async function sommelier(req, res) {
     // ---------- Paso 3 (plan B): si no llegamos a 5, completamos con el catálogo real de sus plataformas ----------
     if (recommendations.length < WANTED) {
       usedCatalog = true;
-      const already = new Set(recommendations.map((m) => m.id));
+      const already = new Set([...recommendations.map((m) => m.id), ...seenIds]);
       const pool = (await discoverOnPlatforms(platforms)).filter((m) => !already.has(m.id));
       const list = pool.map((m) => `${m.id} | ${m.title} (${m.year}) | nota ${m.rating}`).join('\n');
       const need = WANTED - recommendations.length;

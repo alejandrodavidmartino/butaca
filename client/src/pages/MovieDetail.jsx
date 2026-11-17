@@ -7,6 +7,7 @@ import ErrorMessage from '../components/ErrorMessage';
 import MovieRow from '../components/MovieRow';
 import Rating from '../components/Rating';
 import AddToGroup from '../components/AddToGroup';
+import WatchedButton from '../components/WatchedButton';
 import { useAuth } from '../context/AuthContext';
 
 // Pasa minutos a "2 h 2 min"
@@ -84,6 +85,7 @@ export default function MovieDetail() {
                   ▶ Ver tráiler
                 </button>
               )}
+              {user && <WatchedButton movie={movie} />}
               {user ? (
                 <AddToGroup tmdbId={movie.id} />
               ) : (

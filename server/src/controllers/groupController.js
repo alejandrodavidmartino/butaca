@@ -2,6 +2,7 @@ import Group, { MAX_MEMBERS, MAX_MOVIES, generateInviteCode } from '../models/Gr
 import User from '../models/User.js';
 import { getMovieDetail } from '../services/tmdb.js';
 import { HttpError } from '../utils/httpError.js';
+import { upsertWatched } from './watchedController.js';
 
 const USER_FIELDS = 'name username avatar';
 
@@ -203,6 +204,10 @@ export async function rateMovie(req, res) {
     movie.ratings.push({ user: req.user._id, score, comment });
   }
   await group.save(); // aquí Mongoose valida que la nota sea un entero de 1 a 10
+
+  // También va a "Mis vistas" del usuario, con la misma nota, si todavía no la tenía allí
+  await upsertWatched(req.user._id, movie.tmdbId, { score, comment }, { onlyIfMissing: true }).catch(() => {});
+
   res.json(await populated(group));
 }
 

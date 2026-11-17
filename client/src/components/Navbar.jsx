@@ -24,6 +24,7 @@ export default function Navbar() {
       <NavLink to="/peliculas" className={linkClass} onClick={() => setOpen(false)}>Películas</NavLink>
       <NavLink to="/sommelier" className={linkClass} onClick={() => setOpen(false)}>🐀 Ratatús IA</NavLink>
       {user && <NavLink to="/grupos" className={linkClass} onClick={() => setOpen(false)}>Mis grupos</NavLink>}
+      {user && <NavLink to="/mis-vistas" className={linkClass} onClick={() => setOpen(false)}>Mis vistas</NavLink>}
       {isAdmin && <NavLink to="/admin" className={linkClass} onClick={() => setOpen(false)}>Admin</NavLink>}
     </>
   );

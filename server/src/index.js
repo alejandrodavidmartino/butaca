@@ -8,7 +8,9 @@ import movieRoutes from './routes/movieRoutes.js';
 import groupRoutes from './routes/groupRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
+import meRoutes from './routes/meRoutes.js';
 import User from './models/User.js';
+import { syncGroupRatingsToDiaries } from './scripts/syncDiaries.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -29,6 +31,7 @@ app.use('/api/movies', movieRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/me', meRoutes);
 
 // Manejo de errores (siempre al final)
 app.use(notFound);
@@ -44,6 +47,8 @@ connectDB()
   .then(async () => {
     // Cuentas creadas antes de existir el @usuario: les generamos uno
     for (const u of await User.find({ username: { $exists: false } })) await u.save();
+    // Notas puestas en grupos antes de existir "Mis vistas": las copiamos al diario de cada uno
+    await syncGroupRatingsToDiaries();
 
     app.listen(PORT, () => console.log(`🎬 Butaca API escuchando en http://localhost:${PORT}`));
   })

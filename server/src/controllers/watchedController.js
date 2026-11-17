@@ -1,0 +1,96 @@
+import WatchedMovie from '../models/WatchedMovie.js';
+import { getMovieDetail } from '../services/tmdb.js';
+import { HttpError } from '../utils/httpError.js';
+
+// Crea o actualiza una película en el diario del usuario.
+// La usamos desde la API y también desde los grupos (al puntuar allí).
+export async function upsertWatched(userId, tmdbId, { score, comment, watchedAt } = {}, { onlyIfMissing = false } = {}) {
+  let entry = await WatchedMovie.findOne({ user: userId, tmdbId });
+  if (entry && onlyIfMissing) return entry;
+
+  if (!entry) {
+    const movie = await getMovieDetail(tmdbId); // datos fiables desde TMDB, no desde el navegador
+    entry = new WatchedMovie({
+      user: userId,
+      tmdbId,
+      title: movie.title,
+      poster: movie.poster,
+      year: movie.year,
+      runtime: movie.runtime,
+      genres: movie.genres.map((g) => g.name),
+    });
+  }
+  if (score !== undefined) entry.score = score === null || score === '' ? undefined : Number(score);
+  if (comment !== undefined) entry.comment = String(comment).slice(0, 280);
+  if (watchedAt) {
+    const date = new Date(watchedAt);
+    if (Number.isNaN(date.getTime()) || date > new Date()) throw new HttpError(400, 'La fecha no es válida');
+    entry.watchedAt = date;
+  }
+  await entry.save();
+  return entry;
+}
+
+// GET /api/me/watched?sort=recent|best|worst&q=texto
+export async function listWatched(req, res) {
+  const sorts = {
+    recent: { watchedAt: -1 },
+    best: { score: -1, watchedAt: -1 },
+    worst: { score: 1, watchedAt: -1 },
+    title: { title: 1 },
+  };
+  const filter = { user: req.user._id };
+  const q = String(req.query.q || '').trim();
+  if (q) filter.title = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+
+  const movies = await WatchedMovie.find(filter)
+    .sort(sorts[req.query.sort] || sorts.recent)
+    .lean();
+  // Las que no tienen nota, al final cuando ordenamos por nota
+  if (req.query.sort === 'best' || req.query.sort === 'worst') {
+    movies.sort((a, b) => (a.score == null) - (b.score == null));
+  }
+  res.json(movies);
+}
+
+// GET /api/me/watched/stats  -> estadísticas del diario
+export async function watchedStats(req, res) {
+  const all = await WatchedMovie.find({ user: req.user._id }).lean();
+  const rated = all.filter((m) => m.score != null);
+  const minutes = all.reduce((acc, m) => acc + (m.runtime || 0), 0);
+
+  // Género más visto
+  const genreCount = {};
+  all.forEach((m) => m.genres.forEach((g) => (genreCount[g] = (genreCount[g] || 0) + 1)));
+  const topGenre = Object.entries(genreCount).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+
+  res.json({
+    count: all.length,
+    rated: rated.length,
+    hours: Math.round(minutes / 60),
+    avgScore: rated.length ? Math.round((rated.reduce((a, m) => a + m.score, 0) / rated.length) * 10) / 10 : null,
+    topGenre,
+    best: rated.sort((a, b) => b.score - a.score)[0] || null,
+  });
+}
+
+// GET /api/me/watched/:tmdbId  -> ¿la he visto? (para la ficha)
+export async function getWatched(req, res) {
+  const entry = await WatchedMovie.findOne({ user: req.user._id, tmdbId: Number(req.params.tmdbId) });
+  res.json(entry); // null si no la ha visto
+}
+
+// PUT /api/me/watched/:tmdbId  { score?, comment?, watchedAt? }
+export async function saveWatched(req, res) {
+  const tmdbId = parseInt(req.params.tmdbId);
+  if (!tmdbId) throw new HttpError(400, 'Película no válida');
+  const { score, comment, watchedAt } = req.body;
+  res.json(await upsertWatched(req.user._id, tmdbId, { score, comment, watchedAt }));
+}
+
+// DELETE /api/me/watched/:tmdbId
+export async function deleteWatched(req, res) {
+  const result = await WatchedMovie.deleteOne({ user: req.user._id, tmdbId: Number(req.params.tmdbId) });
+  if (!result.deletedCount) throw new HttpError(404, 'Esa película no está en tus vistas');
+  res.json({ message: 'Película quitada de tus vistas' });
+}
