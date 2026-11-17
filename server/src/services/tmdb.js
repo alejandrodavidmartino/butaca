@@ -36,6 +36,31 @@ async function get(path, params = {}) {
   return data;
 }
 
+// ---------- Limpieza de spam ----------
+// TMDB es colaborativa y a veces cuelan publicidad en las sinopsis
+// (p. ej. "¿Buscas películas gratis? ¡Busca xxxx.net en Google!"). Quitamos las frases con enlaces o dominios.
+const SPAM = /(https?:\/\/|www\.|\b[\w-]+\.(?:net|com|org|tv|to|io|xyz|cc|me|site|online|top)\b|@\w{3,})/i;
+// Frases típicas de esta publicidad aunque no lleven dominio
+const SPAM_PHRASES = /(pel[ií]culas?\s+y\s+series\s+gratis|ver\s+gratis|\ben\s+google\b|descarga\s+gratis)/i;
+export function cleanOverview(text = '') {
+  // 1) Quitamos las frases completas que son publicidad
+  const bySentence = text
+    .split(/(?<=[.!?¡¿])\s+/) // frases
+    .filter((sentence) => !SPAM.test(sentence) && !SPAM_PHRASES.test(sentence))
+    .join(' ')
+    .trim();
+  if (bySentence.length > 40 || !SPAM.test(text)) return bySentence;
+
+  // 2) Plan B: si la publicidad va pegada al texto sin punto, borramos solo los trozos de spam
+  return text
+    .replace(/¿?\s*buscas\s+pel[ií]culas\s+y\s+series\s+gratis\?\s*/gi, '')
+    .replace(/¡?\s*busca\s+\S+\s+en\s+google\s*!?\s*/gi, '')
+    .replace(/ver\s+gratis\s+\S*\s*@\w+\s*/gi, '')
+    .replace(new RegExp(SPAM.source, 'gi'), '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 // ---------- Transformaciones ----------
 // Devolvemos al frontend solo lo que necesita, con las URLs de imagen completas
 const img = (path, size) => (path ? `${IMG}/${size}${path}` : null);
@@ -47,7 +72,7 @@ export const toMovieCard = (m) => ({
   rating: m.vote_average ? Math.round(m.vote_average * 10) / 10 : null,
   poster: img(m.poster_path, 'w342'),
   backdrop: img(m.backdrop_path, 'w1280'),
-  overview: m.overview,
+  overview: cleanOverview(m.overview),
   genreIds: m.genre_ids || m.genres?.map((g) => g.id) || [],
 });
 
