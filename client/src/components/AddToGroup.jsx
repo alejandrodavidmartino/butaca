@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { addMovieToGroup, getMyGroups } from '../services/groups';
+import GroupAvatar from './GroupAvatar';
 import { getErrorMessage } from '../services/api';
 
 // Botón "Añadir a grupo" con desplegable de mis grupos (en la ficha de película)
@@ -52,7 +53,7 @@ export default function AddToGroup({ tmdbId, compact = false }) {
                 disabled={status[g._id] === 'ok'}
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-white/5 disabled:opacity-80"
               >
-                <span className="text-xl">{g.emoji}</span>
+                <GroupAvatar group={g} className="h-8 w-8 rounded-lg text-lg" />
                 <span className="flex-1">
                   <span className="block font-medium">{g.name}</span>
                   {status[g._id] && status[g._id] !== 'ok' && (

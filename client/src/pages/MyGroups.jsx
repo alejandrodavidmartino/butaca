@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import useFetch from '../hooks/useFetch';
-import { createGroup, getMyGroups, joinGroup } from '../services/groups';
+import { createGroup, getMyGroups, joinGroup, uploadGroupImage } from '../services/groups';
+import { resizeImage } from '../utils/resizeImage';
 import { getErrorMessage } from '../services/api';
 import Avatar from '../components/Avatar';
+import GroupAvatar from '../components/GroupAvatar';
 import Modal from '../components/Modal';
 import ErrorMessage from '../components/ErrorMessage';
 
@@ -110,7 +112,7 @@ function GroupCard({ group }) {
         {group.posters.map((p) => <img key={p} src={p} alt="" className="h-full w-1/4 object-cover" />)}
       </div>
       <div className="relative">
-        <span className="text-4xl">{group.emoji}</span>
+        <GroupAvatar group={group} className="h-14 w-14 rounded-xl text-3xl" />
         <h3 className="mt-2 text-lg font-semibold group-hover:text-white">{group.name}</h3>
         <p className="line-clamp-1 text-sm text-zinc-400">{group.description || ' '}</p>
         <div className="mt-4 flex items-center justify-between">
@@ -133,6 +135,20 @@ function GroupCard({ group }) {
 
 function CreateGroupModal({ onClose, onCreated }) {
   const [form, setForm] = useState({ name: '', description: '', emoji: '🍿' });
+  const [photo, setPhoto] = useState(null); // foto ya reducida (data URL) o null
+  const fileInput = useRef(null);
+
+  const pickPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      setPhoto(await resizeImage(file));
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -140,7 +156,10 @@ function CreateGroupModal({ onClose, onCreated }) {
     e.preventDefault();
     setSending(true);
     try {
-      onCreated(await createGroup(form));
+      const group = await createGroup(form);
+      // La foto se sube después de crear el grupo (necesitamos su id)
+      if (photo) await uploadGroupImage(group._id, photo).catch(() => {});
+      onCreated(group);
     } catch (err) {
       setError(getErrorMessage(err));
       setSending(false);
@@ -151,7 +170,28 @@ function CreateGroupModal({ onClose, onCreated }) {
     <Modal title="Nuevo grupo" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <span className="mb-1.5 block text-sm font-medium text-zinc-300">Icono</span>
+          <span className="mb-1.5 block text-sm font-medium text-zinc-300">Foto del grupo (opcional)</span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => fileInput.current.click()}
+              className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-dashed border-white/20 bg-white/5 text-2xl hover:border-butaca-500"
+              aria-label={photo ? 'Cambiar foto' : 'Subir foto'}
+            >
+              {photo ? <img src={photo} alt="Vista previa de la foto del grupo" className="h-full w-full object-cover" /> : '📷'}
+            </button>
+            <div className="text-xs text-zinc-400">
+              {photo ? (
+                <button type="button" onClick={() => setPhoto(null)} className="text-red-300 hover:underline">Quitar foto</button>
+              ) : (
+                'Sube una foto vuestra o elige un icono. Se recorta en cuadrado automáticamente.'
+              )}
+            </div>
+            <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
+          </div>
+        </div>
+        <div>
+          <span className="mb-1.5 block text-sm font-medium text-zinc-300">{photo ? 'Icono (se usa si quitas la foto)' : 'Icono'}</span>
           <div className="flex flex-wrap gap-2">
             {EMOJIS.map((e) => (
               <button

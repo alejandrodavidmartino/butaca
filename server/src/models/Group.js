@@ -59,6 +59,8 @@ const groupSchema = new mongoose.Schema(
     },
     description: { type: String, trim: true, maxlength: 160, default: '' },
     emoji: { type: String, default: '🍿', maxlength: 8 },
+    // Marca de tiempo de la foto personalizada (null = sin foto). Sirve para cambiar la URL y saltarse la caché
+    imageVersion: { type: Number, default: null },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     inviteCode: { type: String, unique: true, default: generateInviteCode },

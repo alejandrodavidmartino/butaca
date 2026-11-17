@@ -2,8 +2,10 @@ import axios from 'axios';
 
 // Instancia de axios para hablar con nuestro backend.
 // En desarrollo usa el proxy de Vite (/api); en producción, VITE_API_URL.
+export const API_URL = import.meta.env.VITE_API_URL || '/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: API_URL,
 });
 
 // Antes de cada petición, si hay token guardado, lo añadimos a la cabecera

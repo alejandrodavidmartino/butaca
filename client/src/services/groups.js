@@ -1,4 +1,4 @@
-import api from './api';
+import api, { API_URL } from './api';
 
 const data = (r) => r.data;
 
@@ -24,3 +24,9 @@ export const searchUsers = (q) => api.get('/users/search', { params: { q } }).th
 export const rateMovie = (id, tmdbId, score, comment) =>
   api.put(`/groups/${id}/movies/${tmdbId}/rating`, { score, comment }).then(data);
 export const unrateMovie = (id, tmdbId) => api.delete(`/groups/${id}/movies/${tmdbId}/rating`).then(data);
+
+// Foto del grupo
+export const uploadGroupImage = (id, image) => api.put(`/groups/${id}/image`, { image }).then(data);
+export const deleteGroupImage = (id) => api.delete(`/groups/${id}/image`).then(data);
+export const groupImageUrl = (group) =>
+  group?.imageVersion ? `${API_URL}/groups/${group._id}/image?v=${group.imageVersion}` : null;

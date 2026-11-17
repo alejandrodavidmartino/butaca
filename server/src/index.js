@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 4000;
 
 // Middlewares globales
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' })); // 1 MB para poder subir fotos de grupo
 
 // Ruta de comprobación: sirve para saber si el servidor está vivo
 app.get('/api/health', (req, res) => {

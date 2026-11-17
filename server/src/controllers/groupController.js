@@ -1,4 +1,5 @@
 import Group, { MAX_MEMBERS, MAX_MOVIES, generateInviteCode } from '../models/Group.js';
+import GroupImage from '../models/GroupImage.js';
 import User from '../models/User.js';
 import { getMovieDetail } from '../services/tmdb.js';
 import { HttpError } from '../utils/httpError.js';
@@ -36,6 +37,7 @@ export async function myGroups(req, res) {
       name: g.name,
       description: g.description,
       emoji: g.emoji,
+      imageVersion: g.imageVersion,
       isOwner: String(g.owner) === String(req.user._id),
       members: g.members,
       moviesCount: g.movies.length,
@@ -85,6 +87,7 @@ export async function updateGroup(req, res) {
 export async function deleteGroup(req, res) {
   const group = await loadGroup(req.params.id, req.user._id);
   if (!group.isOwner(req.user._id)) throw new HttpError(403, 'Solo el creador puede borrar el grupo');
+  await GroupImage.deleteOne({ group: group._id });
   await group.deleteOne();
   res.json({ message: 'Grupo eliminado' });
 }
@@ -132,6 +135,7 @@ export async function removeMember(req, res) {
 
   // Si se queda vacío, se borra. Si se va el creador, el grupo pasa al siguiente miembro.
   if (group.members.length === 0) {
+    await GroupImage.deleteOne({ group: group._id });
     await group.deleteOne();
     return res.json({ message: 'Grupo eliminado', deleted: true });
   }
@@ -254,4 +258,54 @@ export async function randomMovie(req, res) {
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
   await group.populate({ path: 'movies.addedBy', select: USER_FIELDS });
   res.json({ movie: group.movies.id(pick._id), candidates: candidates.length });
+}
+
+// ---------- Foto del grupo ----------
+const MAX_IMAGE_BYTES = 600 * 1024; // el navegador ya la reduce a ~50 KB; esto es un límite de seguridad
+
+// PUT /api/groups/:id/image  { image: "data:image/jpeg;base64,..." }  (solo el creador)
+export async function uploadImage(req, res) {
+  const group = await loadGroup(req.params.id, req.user._id);
+  if (!group.isOwner(req.user._id)) throw new HttpError(403, 'Solo el creador puede cambiar la foto del grupo');
+
+  const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body.image || ''));
+  if (!match) throw new HttpError(400, 'La imagen debe ser JPG, PNG o WEBP');
+  const data = Buffer.from(match[2], 'base64');
+  if (data.length > MAX_IMAGE_BYTES) throw new HttpError(413, 'La imagen es demasiado grande');
+
+  // Comprobamos la "firma" real del archivo (no basta con lo que diga el texto "data:image/...")
+  const isJpeg = data[0] === 0xff && data[1] === 0xd8;
+  const isPng = data.subarray(1, 4).toString() === 'PNG';
+  const isWebp = data.subarray(8, 12).toString() === 'WEBP';
+  if (!isJpeg && !isPng && !isWebp) throw new HttpError(400, 'El archivo no es una imagen válida');
+
+  await GroupImage.findOneAndUpdate(
+    { group: group._id },
+    { data, contentType: match[1] },
+    { upsert: true, runValidators: true }
+  );
+  group.imageVersion = Date.now();
+  await group.save();
+  res.json(await populated(group));
+}
+
+// DELETE /api/groups/:id/image  (solo el creador)
+export async function deleteImage(req, res) {
+  const group = await loadGroup(req.params.id, req.user._id);
+  if (!group.isOwner(req.user._id)) throw new HttpError(403, 'Solo el creador puede quitar la foto del grupo');
+  await GroupImage.deleteOne({ group: group._id });
+  group.imageVersion = null;
+  await group.save();
+  res.json(await populated(group));
+}
+
+// GET /api/groups/:id/image?v=123  -> la imagen en sí (para la etiqueta <img>)
+// Es pública porque una <img> no puede enviar el token; el id del grupo no se puede adivinar.
+export async function getImage(req, res) {
+  const image = await GroupImage.findOne({ group: req.params.id }).lean();
+  if (!image) throw new HttpError(404, 'Este grupo no tiene foto');
+  res.set('Content-Type', image.contentType);
+  // La URL cambia con cada foto nueva (?v=...), así que se puede cachear "para siempre"
+  res.set('Cache-Control', 'public, max-age=31536000, immutable');
+  res.send(image.data.buffer ? Buffer.from(image.data.buffer) : image.data);
 }

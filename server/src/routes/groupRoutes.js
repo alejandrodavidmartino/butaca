@@ -4,6 +4,10 @@ import * as g from '../controllers/groupController.js';
 
 // Todas las rutas de grupos requieren haber iniciado sesión
 const router = Router();
+
+// La imagen se pide desde una etiqueta <img>, que no envía el token: va ANTES de protect
+router.get('/:id/image', g.getImage);
+
 router.use(protect);
 
 router.get('/', g.myGroups);
@@ -24,5 +28,7 @@ router.put('/:id/movies/:tmdbId/rating', g.rateMovie);
 router.delete('/:id/movies/:tmdbId/rating', g.unrateMovie);
 
 router.get('/:id/random', g.randomMovie);
+router.put('/:id/image', g.uploadImage);
+router.delete('/:id/image', g.deleteImage);
 
 export default router;

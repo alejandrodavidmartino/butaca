@@ -14,6 +14,7 @@ import RatingModal from '../components/RatingModal';
 import ScoreBadge from '../components/ScoreBadge';
 import Ratatus from '../components/Ratatus';
 import RatatusPopup from '../components/RatatusPopup';
+import GroupPhoto from '../components/GroupPhoto';
 
 export default function GroupDetail() {
   const { id } = useParams();
@@ -87,9 +88,7 @@ export default function GroupDetail() {
       {/* ---------- Cabecera ---------- */}
       <header className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex items-center gap-4">
-          <span className="grid h-20 w-20 place-items-center rounded-2xl bg-telon text-5xl ring-1 ring-white/10">
-            {group.emoji}
-          </span>
+          <GroupPhoto group={group} canEdit={isOwner} onChange={setGroup} onError={setActionError} />
           <div>
             <h1 className="font-display text-5xl leading-none tracking-wide">{group.name}</h1>
             {group.description && <p className="mt-1 text-zinc-400">{group.description}</p>}
@@ -463,8 +462,8 @@ function GroupAI({ group, onAdd }) {
 
   return (
     <>
-      <div className="relative mt-6 flex items-center gap-4 overflow-hidden rounded-2xl border border-butaca-500/30 bg-gradient-to-br from-butaca-700/30 to-telon p-4 pr-5">
-        <button onClick={() => setOpen(true)} className="w-20 shrink-0 transition hover:-translate-y-1" aria-label="Abrir recomendaciones de Ratatús">
+      <div className="relative mt-6 flex flex-wrap items-center gap-4 overflow-hidden rounded-2xl border border-butaca-500/30 bg-gradient-to-br from-butaca-700/30 to-telon p-4 sm:flex-nowrap sm:pr-5">
+        <button onClick={() => setOpen(true)} className="w-16 shrink-0 transition hover:-translate-y-1 sm:w-20" aria-label="Abrir recomendaciones de Ratatús">
           <Ratatus />
         </button>
         <div className="min-w-0 flex-1">
@@ -472,11 +471,11 @@ function GroupAI({ group, onAdd }) {
           <h2 className="font-semibold">Nuestra rata experta en cine tiene ideas para vosotros</h2>
           <p className="text-sm text-zinc-400">
             {rated > 0
-              ? `Ha olfateado vuestras ${rated} películas puntuadas y lo que tenéis pendiente.`
+              ? `Ha olfateado ${rated === 1 ? 'vuestra película puntuada' : `vuestras ${rated} películas puntuadas`} y lo que tenéis pendiente.`
               : 'Puntuad algunas películas vistas y afinará mucho más el olfato.'}
           </p>
         </div>
-        <button onClick={() => setOpen(true)} disabled={group.movies.length === 0} className="btn-primary shrink-0">
+        <button onClick={() => setOpen(true)} disabled={group.movies.length === 0} className="btn-primary w-full shrink-0 py-3 sm:w-auto sm:py-2">
           🐀 ¡Recomiéndanos!
         </button>
       </div>
