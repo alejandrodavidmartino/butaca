@@ -40,6 +40,16 @@ app.use(
 // Middlewares globales
 app.use(express.json({ limit: '1mb' })); // 1 MB para poder subir fotos de grupo
 
+// Raíz: pequeña presentación de la API (útil si alguien abre la URL del backend en el navegador)
+app.get('/', (_req, res) => {
+  res.json({
+    app: 'Butaca API 🎬🐀',
+    description: 'API REST de Butaca: recomendador de películas con IA (Express + MongoDB + TMDB + Gemini)',
+    health: '/api/health',
+    web: (process.env.CLIENT_URL || '').split(',')[0].trim() || null,
+  });
+});
+
 // Ruta de comprobación: sirve para saber si el servidor está vivo
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, app: 'Butaca API', time: new Date().toISOString() });
