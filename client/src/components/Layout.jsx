@@ -12,7 +12,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <footer className="border-t border-white/5 py-8 text-center text-sm text-zinc-500">
-        <p>Butaca · Proyecto final Full-Stack JS</p>
+        <p>Butaca · Proyecto del Módulo Full-Stack JS</p>
         <p className="mt-1">Datos de películas proporcionados por TMDB</p>
       </footer>
     </div>

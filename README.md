@@ -2,7 +2,7 @@
 
 **Butaca** es una aplicación web Full-Stack para **decidir qué película ver en grupo**. Reúne a tus amigos, pareja o familia en un grupo, apuntad películas, dejad que **la ruleta** elija y puntuad lo que veáis. Si no sabéis por dónde empezar, **Ratatús** 🐀, nuestra mascota con IA, os recomienda según vuestro ánimo, vuestras notas y las plataformas que tenéis en casa.
 
-> Proyecto final del Módulo Full-Stack JS · React + Node.js + MongoDB + TMDB + Google Gemini
+> Proyecto del Módulo Full-Stack JS · React + Node.js + MongoDB + TMDB + Google Gemini
 
 | | |
 |---|---|
@@ -343,4 +343,4 @@ Técnicas aplicadas:
 - Inteligencia artificial: **Google Gemini**.
 - Mascota Ratatús, logo e interfaz: diseño propio.
 
-**Autor:** [@alejandrodavidmartino](https://github.com/alejandrodavidmartino) · Proyecto final del Módulo Full-Stack JS.
+**Autor:** [@alejandrodavidmartino](https://github.com/alejandrodavidmartino) · Proyecto del Módulo Full-Stack JS.
