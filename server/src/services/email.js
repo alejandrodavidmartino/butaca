@@ -6,6 +6,22 @@
 
 const BREVO_URL = 'https://api.brevo.com/v3/smtp/email';
 
+// Último resultado de envío (para el diagnóstico /api/health/email). Nunca guarda la clave.
+let lastResult = null;
+export const getLastEmailResult = () => lastResult;
+
+// Resumen de la configuración sin mostrar secretos
+export function describeEmailConfig() {
+  const key = (process.env.BREVO_API_KEY || '').trim();
+  const from = (process.env.EMAIL_FROM || '').trim();
+  return {
+    enabled: emailEnabled(),
+    apiKey: key ? `${key.startsWith('xkeysib-') ? 'formato correcto (xkeysib-…)' : '⚠️ no empieza por xkeysib- (¿es la clave SMTP?)'} · ${key.length} caracteres` : 'falta BREVO_API_KEY',
+    from: from ? from.replace(/^(.{3}).*(@.*)$/, '$1…$2') : 'falta EMAIL_FROM',
+    linksTo: appUrl(),
+  };
+}
+
 export const emailEnabled = () => Boolean(process.env.BREVO_API_KEY && process.env.EMAIL_FROM);
 
 export async function sendEmail({ to, toName, subject, html, text }) {
@@ -34,8 +50,10 @@ export async function sendEmail({ to, toName, subject, html, text }) {
   if (!res.ok) {
     const body = await res.text();
     console.error(`Brevo ${res.status}:`, body.slice(0, 300));
+    lastResult = { ok: false, at: new Date().toISOString(), status: res.status, brevo: body.slice(0, 300) };
     throw new Error(`No se pudo enviar el correo (Brevo ${res.status})`);
   }
+  lastResult = { ok: true, at: new Date().toISOString(), status: res.status };
   return res.json();
 }
 

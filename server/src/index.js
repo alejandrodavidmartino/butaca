@@ -14,6 +14,7 @@ import collectionRoutes from './routes/collectionRoutes.js';
 import User from './models/User.js';
 import { syncGroupRatingsToDiaries } from './scripts/syncDiaries.js';
 import { describeTmdbCredential, tmdbPing } from './services/tmdb.js';
+import { describeEmailConfig, getLastEmailResult } from './services/email.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -76,6 +77,11 @@ app.get('/api/health/tmdb', async (_req, res) => {
             : `No se pudo contactar con TMDB (${err.code || err.message})`,
     });
   }
+});
+
+// Diagnóstico del correo (Brevo): configuración y último envío, sin mostrar la clave
+app.get('/api/health/email', (_req, res) => {
+  res.json({ ...describeEmailConfig(), lastSend: getLastEmailResult() || 'todavía no se ha intentado enviar ningún correo desde el último arranque' });
 });
 
 // Rutas de la API
