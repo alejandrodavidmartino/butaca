@@ -245,3 +245,6 @@ export async function discoverOnPlatforms(platformKeys, pages = 3) {
   const results = await Promise.all(Array.from({ length: pages }, (_, i) => get('/discover/movie', { ...params, page: i + 1 })));
   return results.flatMap((r) => r.results).map(toMovieCard);
 }
+
+// Petición mínima para comprobar que la credencial funciona (sin caché)
+export const tmdbPing = () => tmdb.get('/configuration');

@@ -13,7 +13,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import collectionRoutes from './routes/collectionRoutes.js';
 import User from './models/User.js';
 import { syncGroupRatingsToDiaries } from './scripts/syncDiaries.js';
-import { describeTmdbCredential } from './services/tmdb.js';
+import { describeTmdbCredential, tmdbPing } from './services/tmdb.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -54,6 +54,28 @@ app.get('/', (_req, res) => {
 // Ruta de comprobación: sirve para saber si el servidor está vivo
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, app: 'Butaca API', time: new Date().toISOString() });
+});
+
+// Diagnóstico de TMDB (sin mostrar nunca la clave): ¿hay credencial?, ¿de qué tipo?, ¿qué responde TMDB?
+app.get('/api/health/tmdb', async (_req, res) => {
+  const credential = describeTmdbCredential();
+  try {
+    await tmdbPing();
+    res.json({ ok: true, credential, tmdb: 'TMDB responde correctamente' });
+  } catch (err) {
+    const status = err.response?.status;
+    res.status(502).json({
+      ok: false,
+      credential,
+      tmdbStatus: status || null,
+      tmdb:
+        status === 401
+          ? 'TMDB rechaza la credencial (401): está mal copiada, incompleta o es de otra cuenta'
+          : status
+            ? `TMDB respondió con error ${status}`
+            : `No se pudo contactar con TMDB (${err.code || err.message})`,
+    });
+  }
 });
 
 // Rutas de la API
