@@ -12,7 +12,9 @@ export default function MovieRow({ title, movies = [], link, loading }) {
         )}
       </div>
 
-      {loading ? (
+      {!loading && !movies?.length ? (
+        <p className="px-4 py-8 text-sm text-zinc-500">No se han podido cargar estas películas ahora mismo.</p>
+      ) : loading ? (
         <div className="flex items-center justify-center gap-3 overflow-hidden py-4">
           {[0.46, 0.73, 1, 0.73, 0.46].map((o, i) => (
             <div

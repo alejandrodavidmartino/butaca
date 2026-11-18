@@ -6,6 +6,7 @@ import TrendingHero from '../components/TrendingHero';
 import Ratatus from '../components/Ratatus';
 import CollectionCard from '../components/CollectionCard';
 import { getPublicCollections } from '../services/admin';
+import ErrorMessage from '../components/ErrorMessage';
 
 export default function Home() {
   const trending = useFetch(() => getList('trending'));
@@ -14,10 +15,19 @@ export default function Home() {
   const topRated = useFetch(() => getList('top_rated'));
   const featured = useFetch(() => getPublicCollections({ featured: 1 }));
 
+  // Si la API de películas falla (TMDB caído o mal configurado), lo decimos en vez de dejar esqueletos eternos
+  const moviesDown = trending.error && nowPlaying.error;
+
   return (
     <>
+      {moviesDown && (
+        <div className="mx-auto max-w-7xl px-4 pt-6">
+          <ErrorMessage message={`${trending.error}. Inténtalo de nuevo en unos minutos.`} />
+        </div>
+      )}
+
       {/* ---------- Escaparate: tendencias de la semana ---------- */}
-      <TrendingHero movies={trending.data?.results.filter((m) => m.backdrop)} loading={trending.loading} />
+      {!trending.error && <TrendingHero movies={trending.data?.results.filter((m) => m.backdrop)} loading={trending.loading} />}
 
       {/* ---------- Banda de Ratatús ---------- */}
       <section className="mx-auto max-w-7xl px-4 py-6">
