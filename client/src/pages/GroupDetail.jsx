@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import GroupActivity from '../components/GroupActivity';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as groupsApi from '../services/groups';
@@ -250,6 +251,8 @@ export default function GroupDetail() {
         <aside className="space-y-6">
           <InviteBox group={group} isOwner={isOwner} onRegenerate={() => run(() => groupsApi.updateGroup(group._id, { regenerateCode: true }))} />
           <Members group={group} isOwner={isOwner} me={user} run={run} />
+          {/* Se recarga cuando el grupo cambia o al cerrar la ruleta (la tirada también se apunta) */}
+          <GroupActivity groupId={group._id} me={user} refreshKey={`${group.updatedAt}|${modal}`} />
           <div className="flex flex-wrap gap-2">
             <button onClick={leave} className="btn-ghost text-xs">Salir del grupo</button>
             {isOwner && (

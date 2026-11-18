@@ -5,6 +5,8 @@ import { getMovieDetail } from '../services/tmdb.js';
 import { HttpError } from '../utils/httpError.js';
 import { upsertWatched } from './watchedController.js';
 import { parseImageDataUrl, sendImage } from '../utils/image.js';
+import GroupActivity from '../models/GroupActivity.js';
+import { logActivity, removeActivity, replaceActivity } from '../services/activity.js';
 
 const USER_FIELDS = 'name username avatarVersion';
 
@@ -62,6 +64,7 @@ export async function createGroup(req, res) {
     owner: req.user._id,
     members: [req.user._id],
   });
+  await logActivity(group._id, req.user._id, 'created');
   res.status(201).json(await populated(group));
 }
 
@@ -76,11 +79,13 @@ export async function updateGroup(req, res) {
   const group = await loadGroup(req.params.id, req.user._id);
   if (!group.isOwner(req.user._id)) throw new HttpError(403, 'Solo el creador puede editar el grupo');
 
+  const oldName = group.name;
   for (const field of ['name', 'description', 'emoji']) {
     if (req.body[field] !== undefined) group[field] = req.body[field];
   }
   if (req.body.regenerateCode) group.inviteCode = generateInviteCode();
   await group.save();
+  if (group.name !== oldName) await logActivity(group._id, req.user._id, 'renamed', { data: { name: group.name } });
   res.json(await populated(group));
 }
 
@@ -89,6 +94,7 @@ export async function deleteGroup(req, res) {
   const group = await loadGroup(req.params.id, req.user._id);
   if (!group.isOwner(req.user._id)) throw new HttpError(403, 'Solo el creador puede borrar el grupo');
   await GroupImage.deleteOne({ group: group._id });
+  await removeActivity({ group: group._id });
   await group.deleteOne();
   res.json({ message: 'Grupo eliminado' });
 }
@@ -103,6 +109,7 @@ export async function joinByCode(req, res) {
 
   group.members.push(req.user._id);
   await group.save();
+  await logActivity(group._id, req.user._id, 'joined');
   res.json(await populated(group));
 }
 
@@ -118,6 +125,7 @@ export async function addMember(req, res) {
 
   group.members.push(friend._id);
   await group.save();
+  await logActivity(group._id, req.user._id, 'member_added', { target: friend._id });
   res.status(201).json(await populated(group));
 }
 
@@ -137,12 +145,14 @@ export async function removeMember(req, res) {
   // Si se queda vacío, se borra. Si se va el creador, el grupo pasa al siguiente miembro.
   if (group.members.length === 0) {
     await GroupImage.deleteOne({ group: group._id });
+    await removeActivity({ group: group._id });
     await group.deleteOne();
     return res.json({ message: 'Grupo eliminado', deleted: true });
   }
   if (group.isOwner(target)) group.owner = group.members[0];
 
   await group.save();
+  await logActivity(group._id, req.user._id, leaving ? 'left' : 'kicked', { target: leaving ? undefined : target });
   res.json(leaving ? { message: 'Has salido del grupo', left: true } : await populated(group));
 }
 
@@ -169,6 +179,7 @@ export async function addMovie(req, res) {
     addedBy: req.user._id,
   });
   await group.save();
+  await logActivity(group._id, req.user._id, 'movie_added', { movie: { tmdbId, title: movie.title, poster: movie.poster } });
   res.status(201).json(await populated(group));
 }
 
@@ -181,6 +192,9 @@ export async function updateMovie(req, res) {
   movie.watched = Boolean(req.body.watched);
   movie.watchedAt = movie.watched ? new Date() : undefined;
   await group.save();
+  // Si se desmarca (p. ej. por error), quitamos el «la vio» del historial
+  if (movie.watched) await replaceActivity(group._id, req.user._id, 'movie_watched', { 'movie.tmdbId': movie.tmdbId }, { movie });
+  else await removeActivity({ group: group._id, type: 'movie_watched', 'movie.tmdbId': movie.tmdbId });
   res.json(await populated(group));
 }
 
@@ -209,6 +223,8 @@ export async function rateMovie(req, res) {
     movie.ratings.push({ user: req.user._id, score, comment });
   }
   await group.save(); // aquí Mongoose valida que la nota sea un entero de 1 a 10
+  // Si cambia su nota, se sustituye la entrada anterior (solo cuenta la última)
+  await replaceActivity(group._id, req.user._id, 'movie_rated', { 'movie.tmdbId': movie.tmdbId }, { movie, data: { score } });
 
   // También va a "Mis vistas" del usuario, con la misma nota, si todavía no la tenía allí
   await upsertWatched(req.user._id, movie.tmdbId, { score, comment }, { onlyIfMissing: true }).catch(() => {});
@@ -222,6 +238,7 @@ export async function unrateMovie(req, res) {
   const movie = findMovie(group, req.params.tmdbId);
   movie.ratings = movie.ratings.filter((r) => String(r.user) !== String(req.user._id));
   await group.save();
+  await removeActivity({ group: group._id, user: req.user._id, type: 'movie_rated', 'movie.tmdbId': movie.tmdbId });
   res.json(await populated(group));
 }
 
@@ -232,8 +249,10 @@ export async function removeMovie(req, res) {
   if (!movie) throw new HttpError(404, 'Esa película no está en el grupo');
 
   // Cualquier miembro puede quitar una película (loadGroup ya comprobó que es miembro)
+  const snapshot = { tmdbId: movie.tmdbId, title: movie.title, poster: movie.poster };
   movie.deleteOne();
   await group.save();
+  await logActivity(group._id, req.user._id, 'movie_removed', { movie: snapshot });
   res.json(await populated(group));
 }
 
@@ -255,6 +274,8 @@ export async function randomMovie(req, res) {
   }
 
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  // Si gira varias veces seguidas, solo se queda la última tirada (de los últimos 10 minutos)
+  await replaceActivity(group._id, req.user._id, 'roulette', {}, { movie: pick }, 10 * 60 * 1000);
   await group.populate({ path: 'movies.addedBy', select: USER_FIELDS });
   res.json({ movie: group.movies.id(pick._id), candidates: candidates.length });
 }
@@ -276,6 +297,7 @@ export async function uploadImage(req, res) {
   );
   group.imageVersion = Date.now();
   await group.save();
+  await replaceActivity(group._id, req.user._id, 'photo_changed', {}, {}, 10 * 60 * 1000);
   res.json(await populated(group));
 }
 
@@ -295,4 +317,22 @@ export async function getImage(req, res) {
   const image = await GroupImage.findOne({ group: req.params.id }).lean();
   if (!image) throw new HttpError(404, 'Este grupo no tiene foto');
   sendImage(res, image); // con caché larga: la URL cambia con cada foto nueva (?v=...)
+}
+
+// GET /api/groups/:id/activity?before=<fecha ISO>  -> historial del grupo (de 20 en 20)
+const ACTIVITY_PAGE = 20;
+export async function getActivity(req, res) {
+  const group = await loadGroup(req.params.id, req.user._id);
+  const filter = { group: group._id };
+  const before = req.query.before ? new Date(req.query.before) : null;
+  if (before && !isNaN(before)) filter.createdAt = { $lt: before };
+
+  const items = await GroupActivity.find(filter)
+    .sort({ createdAt: -1 })
+    .limit(ACTIVITY_PAGE + 1) // pedimos uno de más para saber si hay más páginas
+    .populate('user', USER_FIELDS)
+    .populate('target', USER_FIELDS)
+    .lean();
+
+  res.json({ items: items.slice(0, ACTIVITY_PAGE), hasMore: items.length > ACTIVITY_PAGE });
 }

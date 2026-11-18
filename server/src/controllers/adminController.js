@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import Group from '../models/Group.js';
+import GroupActivity from '../models/GroupActivity.js';
 import GroupImage from '../models/GroupImage.js';
 import WatchedMovie from '../models/WatchedMovie.js';
 import Collection from '../models/Collection.js';
@@ -302,7 +303,7 @@ export async function listGroups(req, res) {
 export async function deleteGroupAdmin(req, res) {
   const group = await Group.findByIdAndDelete(req.params.id);
   if (!group) throw new HttpError(404, 'Grupo no encontrado');
-  await GroupImage.deleteOne({ group: group._id });
+  await Promise.all([GroupImage.deleteOne({ group: group._id }), GroupActivity.deleteMany({ group: group._id })]);
   res.json({ message: `Grupo «${group.name}» eliminado` });
 }
 

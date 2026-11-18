@@ -3,6 +3,7 @@ import UserAvatar from '../models/UserAvatar.js';
 import WatchedMovie from '../models/WatchedMovie.js';
 import Group from '../models/Group.js';
 import GroupImage from '../models/GroupImage.js';
+import GroupActivity from '../models/GroupActivity.js';
 
 // Borra un usuario y todos sus datos personales (lo usan "borrar mi cuenta" y el panel de admin)
 export async function deleteUserAndData(userId) {
@@ -14,6 +15,7 @@ export async function deleteUserAndData(userId) {
     g.members = g.members.filter((m) => String(m) !== String(userId));
     if (g.members.length === 0) {
       await GroupImage.deleteOne({ group: g._id });
+      await GroupActivity.deleteMany({ group: g._id });
       await g.deleteOne();
     } else {
       if (String(g.owner) === String(userId)) g.owner = g.members[0];
@@ -21,6 +23,11 @@ export async function deleteUserAndData(userId) {
     }
   }
 
-  await Promise.all([WatchedMovie.deleteMany({ user: userId }), UserAvatar.deleteOne({ user: userId })]);
+  await Promise.all([
+    WatchedMovie.deleteMany({ user: userId }),
+    UserAvatar.deleteOne({ user: userId }),
+    // Su rastro en los historiales de grupo también se borra
+    GroupActivity.deleteMany({ $or: [{ user: userId }, { target: userId }] }),
+  ]);
   await User.deleteOne({ _id: userId });
 }

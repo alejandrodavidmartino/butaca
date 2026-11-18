@@ -28,6 +28,7 @@ router.put('/:id/movies/:tmdbId/rating', g.rateMovie);
 router.delete('/:id/movies/:tmdbId/rating', g.unrateMovie);
 
 router.get('/:id/random', g.randomMovie);
+router.get('/:id/activity', g.getActivity);
 router.put('/:id/image', g.uploadImage);
 router.delete('/:id/image', g.deleteImage);
 
