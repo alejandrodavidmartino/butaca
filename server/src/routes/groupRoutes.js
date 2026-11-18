@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { protect } from '../middleware/auth.js';
+import { protect, requireVerified } from '../middleware/auth.js';
 import * as g from '../controllers/groupController.js';
 
 // Todas las rutas de grupos requieren haber iniciado sesión
@@ -11,8 +11,8 @@ router.get('/:id/image', g.getImage);
 router.use(protect);
 
 router.get('/', g.myGroups);
-router.post('/', g.createGroup);
-router.post('/join', g.joinByCode);
+router.post('/', requireVerified, g.createGroup);
+router.post('/join', requireVerified, g.joinByCode);
 
 router.get('/:id', g.getGroup);
 router.patch('/:id', g.updateGroup);

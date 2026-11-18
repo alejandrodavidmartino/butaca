@@ -14,6 +14,7 @@ import RatingModal from '../components/RatingModal';
 import ScoreBadge from '../components/ScoreBadge';
 import Ratatus from '../components/Ratatus';
 import RatatusPopup from '../components/RatatusPopup';
+import { VerifyRequired } from '../components/VerifyEmailNotice';
 import GroupPhoto from '../components/GroupPhoto';
 
 export default function GroupDetail() {
@@ -459,6 +460,8 @@ function AddMovieModal({ group, onClose, onAdd }) {
 // Tarjeta de Ratatús: abre el pop-up con sus recomendaciones para el grupo
 function GroupAI({ group, onAdd }) {
   const [open, setOpen] = useState(false);
+  const { isVerified } = useAuth();
+  if (!isVerified) return <div className="mt-6"><VerifyRequired what="pedir recomendaciones a Ratatús" compact /></div>;
   const rated = group.movies.filter((m) => m.ratings?.length).length;
 
   return (

@@ -99,7 +99,19 @@ export default function AdminUsers() {
                           </span>
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-zinc-300">{u.email}</td>
+                      <td className="px-4 py-3 text-zinc-300">
+                        <span className="block">{u.email}</span>
+                        {u.emailVerified ? (
+                          <span className="text-xs text-emerald-400">✓ Correo confirmado</span>
+                        ) : (
+                          <span className="text-xs text-amber-300">
+                            ✉️ Sin confirmar ·{' '}
+                            <button onClick={() => act(u, () => updateUser(u._id, { emailVerified: true }), `¿Marcar el correo de @${u.username} como confirmado?`)} className="underline hover:text-white">
+                              verificar a mano
+                            </button>
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-zinc-400">{formatDate(u.createdAt)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{u.watchedCount}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{u.groupCount}</td>

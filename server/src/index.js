@@ -104,6 +104,8 @@ connectDB()
   .then(async () => {
     // Cuentas creadas antes de existir el @usuario: les generamos uno
     for (const u of await User.find({ username: { $exists: false } })) await u.save();
+    // Cuentas creadas antes de existir la verificación de correo: las damos por verificadas
+    await User.updateMany({ emailVerified: { $exists: false } }, { $set: { emailVerified: true } });
     // Notas puestas en grupos antes de existir "Mis vistas": las copiamos al diario de cada uno
     await syncGroupRatingsToDiaries();
 

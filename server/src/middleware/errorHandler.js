@@ -30,7 +30,7 @@ export function errorHandler(err, _req, res, _next) {
 
   const status = err.status || 500;
   if (status === 500) console.error(err);
-  res.status(status).json({ message: status === 500 ? 'Error interno del servidor' : err.message });
+  res.status(status).json({ message: status === 500 ? 'Error interno del servidor' : err.message, ...(err.code ? { code: err.code } : {}) });
 }
 
 export function notFound(req, res) {

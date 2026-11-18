@@ -24,6 +24,7 @@ import AdminTaxonomy from './admin/AdminTaxonomy';
 import AdminModeration from './admin/AdminModeration';
 import Collections from './pages/Collections';
 import CollectionDetail from './pages/CollectionDetail';
+import VerifyEmail from './pages/VerifyEmail';
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/pelicula/:id" element={<MovieDetail />} />
         <Route path="/colecciones" element={<Collections />} />
         <Route path="/colecciones/:slug" element={<CollectionDetail />} />
+        <Route path="/verificar" element={<VerifyEmail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Register />} />
 

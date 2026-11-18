@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import { PLATFORM_KEYS } from '../config/platforms.js';
 
 const userSchema = new mongoose.Schema(
@@ -33,6 +34,11 @@ const userSchema = new mongoose.Schema(
       select: false, // nunca se devuelve en las consultas salvo que se pida
     },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    // Verificación del correo: guardamos solo el HASH del token (nunca el token en claro)
+    emailVerified: { type: Boolean, default: false },
+    emailVerifyTokenHash: { type: String, select: false },
+    emailVerifyExpires: { type: Date, select: false },
+    emailVerifySentAt: { type: Date },
     active: { type: Boolean, default: true }, // el admin puede bloquear usuarios
     avatar: { type: String, default: '' },
     // Versión de la foto de perfil (null = sin foto). Cambia la URL para saltarse la caché
@@ -67,11 +73,23 @@ userSchema.methods.comparePassword = function (plain) {
   return bcrypt.compare(plain, this.password);
 };
 
+// Crea un token de verificación de correo: devuelve el token en claro (para el enlace del correo)
+// y guarda en el usuario solo su hash SHA-256, con caducidad de 24 horas
+userSchema.methods.createEmailVerifyToken = function () {
+  const token = crypto.randomBytes(32).toString('hex');
+  this.emailVerifyTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  this.emailVerifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  this.emailVerifySentAt = new Date();
+  return token;
+};
+
 // Al convertir a JSON quitamos la contraseña por seguridad
 userSchema.set('toJSON', {
   transform: (_doc, ret) => {
     delete ret.password;
     delete ret.__v;
+    delete ret.emailVerifyTokenHash;
+    delete ret.emailVerifyExpires;
     return ret;
   },
 });

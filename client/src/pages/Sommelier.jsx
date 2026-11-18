@@ -6,6 +6,7 @@ import AiRecommendation from '../components/AiRecommendation';
 import AddToGroup from '../components/AddToGroup';
 import Ratatus from '../components/Ratatus';
 import PlatformPicker from '../components/PlatformPicker';
+import { VerifyRequired } from '../components/VerifyEmailNotice';
 
 // Sugerencias rápidas para no empezar con la pantalla en blanco
 const MOODS = ['😂 Reírme', '😱 Pasar miedo', '😭 Llorar a gusto', '🤯 Que me vuele la cabeza', '💘 Algo romántico', '🧘 Algo tranquilo'];
@@ -16,7 +17,7 @@ const TIME = ['Menos de 1 h 30', 'Unas 2 horas', 'Me da igual'];
 const FOLLOW_UPS = ['Algo más antiguo', 'Sin animación', 'Más cortas', 'Algo menos conocido', 'Más de este estilo'];
 
 export default function Sommelier() {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, isVerified } = useAuth();
   // Plataformas que tiene el usuario (se guardan en su perfil para la próxima vez)
   const [platforms, setPlatforms] = useState(user.platforms || []);
   const [showPlatforms, setShowPlatforms] = useState(false);
@@ -99,8 +100,10 @@ export default function Sommelier() {
         </p>
       </header>
 
+      {!isVerified && <div className="mt-10"><VerifyRequired what="pedirle recomendaciones a Ratatús" /></div>}
+
       {/* ---------- Primer paso: elegir preferencias ---------- */}
-      {!started && (
+      {isVerified && !started && (
         <div className="mt-10 space-y-6 rounded-2xl border border-white/10 bg-telon p-6">
           <ChipGroup label="¿Qué te apetece?" options={MOODS} value={prefs.mood} onChange={(mood) => setPrefs({ ...prefs, mood })} />
           <ChipGroup label="¿Con quién?" options={COMPANY} value={prefs.company} onChange={(company) => setPrefs({ ...prefs, company })} />

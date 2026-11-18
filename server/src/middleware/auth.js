@@ -22,6 +22,14 @@ export async function protect(req, _res, next) {
   next();
 }
 
+// Exige haber confirmado el correo (usar después de protect). Los admins quedan exentos.
+export function requireVerified(req, _res, next) {
+  if (!req.user.emailVerified && req.user.role !== 'admin') {
+    throw new HttpError(403, 'Confirma tu correo para usar esta función. Revisa tu bandeja de entrada (y el spam)', 'EMAIL_NOT_VERIFIED');
+  }
+  next();
+}
+
 // Solo deja pasar a administradores (usar siempre después de protect)
 export function adminOnly(req, _res, next) {
   if (req.user?.role !== 'admin') throw new HttpError(403, 'Solo para administradores');

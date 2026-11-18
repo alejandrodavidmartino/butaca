@@ -14,7 +14,7 @@ const memberSince = (d) => new Date(d).toLocaleDateString('es-ES', { month: 'lon
 // Perfil de un usuario (/u/:username). Si es el mío, puedo editarlo y pedir a Ratatús mi perfil cinéfilo.
 export default function Profile() {
   const { username } = useParams();
-  const { user: me, generateTaste } = useAuth();
+  const { user: me, generateTaste, isVerified } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [tasteState, setTasteState] = useState({ loading: false, error: '' });
@@ -107,7 +107,8 @@ export default function Profile() {
           )}
           {tasteState.error && <p role="alert" className="alert-error mt-2">{tasteState.error}</p>}
         </div>
-        {isMe && (
+        {isMe && !isVerified && <span className="text-xs text-amber-200">🔒 Confirma tu correo para pedírselo</span>}
+        {isMe && isVerified && (
           <button onClick={askRatatus} disabled={tasteState.loading} className="btn-primary shrink-0">
             {tasteState.loading ? 'Olfateando…' : taste ? '🔄 Actualizar' : '🐀 ¿Qué tipo de espectador soy?'}
           </button>

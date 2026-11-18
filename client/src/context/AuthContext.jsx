@@ -54,9 +54,25 @@ export function AuthProvider({ children }) {
   };
   const generateTaste = async () => setUser((await api.post('/users/me/taste', null, { timeout: 60000 })).data.user);
 
+  // Verificación del correo
+  const resendVerification = async () => {
+    const { data } = await api.post('/auth/resend-verification');
+    setUser(data.user);
+    return data.message;
+  };
+  const verifyEmail = async (token) => {
+    const { data } = await api.post('/auth/verify-email', { token });
+    // Si el que confirma es el usuario con sesión abierta, actualizamos su estado al momento
+    setUser((u) => (u && u._id === data.user._id ? data.user : u));
+    return data;
+  };
+
+  const isAdmin = user?.role === 'admin';
   const value = {
     user, loading, login, register, logout, updateProfile, uploadAvatar, removeAvatar,
-    changePassword, deleteAccount, generateTaste, isAdmin: user?.role === 'admin',
+    changePassword, deleteAccount, generateTaste, resendVerification, verifyEmail, isAdmin,
+    // Los admins no necesitan confirmar el correo
+    isVerified: Boolean(user && (user.emailVerified || isAdmin)),
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

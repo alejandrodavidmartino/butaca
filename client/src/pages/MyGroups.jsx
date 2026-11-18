@@ -6,6 +6,7 @@ import { createGroup, getMyGroups, joinGroup, uploadGroupImage } from '../servic
 import { resizeImage } from '../utils/resizeImage';
 import { getErrorMessage } from '../services/api';
 import Avatar from '../components/Avatar';
+import { VerifyRequired } from '../components/VerifyEmailNotice';
 import GroupAvatar from '../components/GroupAvatar';
 import Modal from '../components/Modal';
 import ErrorMessage from '../components/ErrorMessage';
@@ -14,7 +15,7 @@ const EMOJIS = ['🍿', '🎬', '🍕', '👻', '💘', '🚀', '🏠', '🎉'];
 
 // "Mi Butaca": perfil + mis grupos + crear grupo + unirse con código
 export default function MyGroups() {
-  const { user } = useAuth();
+  const { user, isVerified } = useAuth();
   const navigate = useNavigate();
   const { data: groups, loading, error } = useFetch(getMyGroups);
   const [showCreate, setShowCreate] = useState(false);
@@ -45,7 +46,10 @@ export default function MyGroups() {
         </div>
       </div>
 
-      {/* ---------- Acciones ---------- */}
+      {/* ---------- Acciones (requieren correo confirmado) ---------- */}
+      {!isVerified ? (
+        <div className="mt-8"><VerifyRequired what="crear grupos o unirte a los de tus amigos" /></div>
+      ) : (
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-white/10 bg-telon p-6">
           <h2 className="font-semibold">Crea un grupo</h2>
@@ -73,6 +77,7 @@ export default function MyGroups() {
           {joinError && <p role="alert" className="alert-error mt-3">{joinError}</p>}
         </form>
       </div>
+      )}
 
       {/* ---------- Mis grupos ---------- */}
       <h2 className="mt-12 font-display text-3xl tracking-wide">Mis grupos</h2>

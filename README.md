@@ -59,7 +59,7 @@ Elegir película en grupo suele llevar más tiempo que verla. Butaca está pensa
 - Botón **🎲 Sorpréndeme** para una película bien valorada al azar.
 
 ### Usuarios registrados (contenido exclusivo)
-- **Registro e inicio de sesión** con email o `@usuario`.
+- **Registro e inicio de sesión** con email o `@usuario`, con **correo de confirmación** (Brevo). Sin confirmar se puede navegar, pero no crear o unirse a grupos ni usar Ratatús.
 - **Grupos**: crear (con foto personalizada), invitar por `@usuario` o con código/enlace, añadir películas, quitar, marcar como vistas.
 - **Ruleta** tipo carrusel que frena poco a poco y elige una película pendiente (con filtros de duración y género) 🎉.
 - **Puntuaciones del grupo** (1-10 + comentario): nota media, nota de cada miembro y ranking del grupo.
@@ -228,6 +228,10 @@ npm run dev
 | `TMDB_READ_TOKEN` o `TMDB_API_KEY` | Sí | Credencial de TMDB: el *Read Access Token* (largo, `eyJ…`) o la *API Key* (32 caracteres). El servidor detecta cuál es |
 | `GEMINI_API_KEY` | Sí | Clave de Google AI Studio |
 | `GEMINI_MODEL` | No | Modelo principal (por defecto `gemini-3.5-flash-lite`; si falla, se prueban otros automáticamente) |
+| `BREVO_API_KEY` | No* | Clave de [Brevo](https://www.brevo.com) para enviar los correos de confirmación (gratis, 300/día). *Sin ella, el enlace de confirmación se muestra en la consola del servidor (modo desarrollo) |
+| `EMAIL_FROM` | No* | Email remitente **verificado en Brevo** |
+| `EMAIL_FROM_NAME` | No | Nombre del remitente (por defecto `Butaca`) |
+| `APP_URL` | No | URL del frontend para los enlaces de los correos (por defecto, la primera de `CLIENT_URL`) |
 
 ### `client/.env` (solo en producción)
 
@@ -266,7 +270,7 @@ La aplicación está desplegada en servicios gratuitos: **MongoDB Atlas** (base 
 
 ### 2. Backend · Render
 1. En [render.com](https://render.com) → **New → Blueprint** → elegir este repositorio. Render lee `render.yaml` (servicio web gratuito, carpeta `server`, `npm ci` y `npm start`, comprobación en `/api/health`) y **genera `JWT_SECRET`** automáticamente.
-2. Rellenar las variables secretas: `MONGODB_URI`, `TMDB_API_KEY` (o `TMDB_READ_TOKEN`), `GEMINI_API_KEY` y `CLIENT_URL`.
+2. Rellenar las variables secretas: `MONGODB_URI`, `TMDB_API_KEY` (o `TMDB_READ_TOKEN`), `GEMINI_API_KEY`, `CLIENT_URL`, `BREVO_API_KEY` y `EMAIL_FROM`.
 3. Al terminar, comprobar `https://<servicio>.onrender.com/api/health` y `.../api/health/tmdb`.
 
 ### 3. Frontend · Vercel
@@ -295,7 +299,7 @@ Todas las rutas empiezan por `/api`. 🔒 = requiere sesión · 🛠 = requiere 
 | Recurso | Rutas principales |
 |---|---|
 | **Estado** | `GET /health` · `GET /health/tmdb` |
-| **Auth** | `POST /auth/register` · `POST /auth/login` · 🔒 `GET/PATCH/DELETE /auth/me` · 🔒 `PATCH /auth/me/password` · 🔒 `PUT/DELETE /auth/me/avatar` |
+| **Auth** | `POST /auth/register` · `POST /auth/login` · `POST /auth/verify-email` · 🔒 `POST /auth/resend-verification` · 🔒 `GET/PATCH/DELETE /auth/me` · 🔒 `PATCH /auth/me/password` · 🔒 `PUT/DELETE /auth/me/avatar` |
 | **Películas** (TMDB) | `GET /movies/list/:lista` · `GET /movies/search` · `GET /movies/discover` · `GET /movies/genres` · `GET /movies/platforms` · `GET /movies/random` · `GET /movies/:id` |
 | **Grupos** 🔒 | `GET/POST /groups` · `POST /groups/join` · `GET/PATCH/DELETE /groups/:id` · miembros, películas, puntuaciones (`PUT /groups/:id/movies/:tmdbId/rating`), ruleta (`GET /groups/:id/random`) y foto |
 | **Mis vistas** 🔒 | `GET /me/watched` · `GET /me/watched/stats` · `GET/PUT/DELETE /me/watched/:tmdbId` |
@@ -326,6 +330,7 @@ Técnicas aplicadas:
 ## 🛡 Seguridad, privacidad y accesibilidad
 
 - Contraseñas cifradas con **bcrypt**; autenticación **JWT**; roles `user` / `admin` comprobados **en el servidor**.
+- **Verificación del correo**: token aleatorio de un solo uso que caduca en 24 h; en la base de datos solo se guarda su **hash SHA-256**. Reenvío limitado a 1 por minuto.
 - Usuarios bloqueados no pueden iniciar sesión ni usar la API; un admin no puede bloquearse ni borrarse a sí mismo.
 - **CORS** con lista blanca de orígenes; claves de APIs solo en el servidor.
 - Validación de datos con Mongoose; las imágenes se validan por su **firma real** (JPEG/PNG/WEBP) y tamaño.

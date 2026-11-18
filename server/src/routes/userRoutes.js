@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { protect } from '../middleware/auth.js';
+import { protect, requireVerified } from '../middleware/auth.js';
 import User from '../models/User.js';
 import { getAvatar, getProfile, generateTasteSummary } from '../controllers/profileController.js';
 import { rateLimit } from '../middleware/rateLimit.js';
@@ -10,7 +10,7 @@ const router = Router();
 router.get('/:id/avatar', getAvatar);
 
 // Ratatús escribe tu perfil cinéfilo (usa la IA: con límite de uso)
-router.post('/me/taste', protect, rateLimit({ max: 5, windowMs: 10 * 60 * 1000 }), generateTasteSummary);
+router.post('/me/taste', protect, requireVerified, rateLimit({ max: 5, windowMs: 10 * 60 * 1000 }), generateTasteSummary);
 
 // GET /api/users/search?q=lau  -> buscar amigos por @usuario o nombre
 router.get('/search', protect, async (req, res) => {

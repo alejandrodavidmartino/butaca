@@ -27,3 +27,10 @@ services:
         sync: false
       - key: CLIENT_URL
         sync: false
+      # Correos de confirmación con Brevo (gratis, 300/día). EMAIL_FROM = remitente verificado en Brevo
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: Butaca

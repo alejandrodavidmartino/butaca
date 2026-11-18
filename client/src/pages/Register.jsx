@@ -29,7 +29,7 @@ export default function Register() {
     try {
       const { confirm: _confirm, ...data } = form; // quitamos "confirm": no se envía
       await register(data);
-      navigate('/grupos', { replace: true });
+      navigate('/grupos', { replace: true }); // el aviso de "confirma tu correo" aparece arriba
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {

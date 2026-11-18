@@ -16,6 +16,7 @@ let user = await User.findOne({ email: email.toLowerCase() });
 
 if (user) {
   user.role = 'admin';
+  user.emailVerified = true;
   await user.save();
   console.log(`✅ ${email} ahora es administrador`);
 } else {
@@ -23,7 +24,7 @@ if (user) {
     console.log('El usuario no existe: indica también una contraseña');
     process.exit(1);
   }
-  user = await User.create({ email, name, password, role: 'admin' });
+  user = await User.create({ email, name, password, role: 'admin', emailVerified: true });
   console.log(`✅ Administrador creado: ${email}`);
 }
 await mongoose.disconnect();

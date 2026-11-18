@@ -100,7 +100,7 @@ export async function listUsers(req, res) {
   });
 }
 
-// PATCH /api/admin/users/:id  { role?, active? }
+// PATCH /api/admin/users/:id  { role?, active?, emailVerified? }
 export async function updateUser(req, res) {
   const user = await User.findById(req.params.id);
   if (!user) throw new HttpError(404, 'Usuario no encontrado');
@@ -115,6 +115,8 @@ export async function updateUser(req, res) {
     if (isSelf && !req.body.active) throw new HttpError(400, 'No puedes bloquearte a ti mismo');
     user.active = Boolean(req.body.active);
   }
+  // El admin puede marcar un correo como confirmado (p. ej. si el email llegó a spam y se perdió)
+  if (req.body.emailVerified === true) user.emailVerified = true;
   await user.save();
   res.json(user);
 }
