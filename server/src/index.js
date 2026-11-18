@@ -13,6 +13,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import collectionRoutes from './routes/collectionRoutes.js';
 import User from './models/User.js';
 import { syncGroupRatingsToDiaries } from './scripts/syncDiaries.js';
+import { describeTmdbCredential } from './services/tmdb.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -69,9 +70,11 @@ app.use('/api/collections', collectionRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-// Aviso temprano si falta la credencial de TMDB
+// Aviso temprano sobre la credencial de TMDB (sin mostrar su valor)
 if (!process.env.TMDB_READ_TOKEN && !process.env.TMDB_API_KEY) {
-  console.warn('⚠️  Falta TMDB_READ_TOKEN (o TMDB_API_KEY) en server/.env: el catálogo no funcionará');
+  console.warn('⚠️  Falta TMDB_READ_TOKEN (o TMDB_API_KEY): el catálogo no funcionará');
+} else {
+  console.log(`🎞️  TMDB: usando ${describeTmdbCredential()}`);
 }
 
 // Primero conectamos a la base de datos y después arrancamos el servidor

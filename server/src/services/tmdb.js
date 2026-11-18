@@ -10,14 +10,34 @@ const tmdb = axios.create({
   params: { language: 'es-ES' },
 });
 
+// Limpia lo que se pega a veces al copiar: espacios, comillas o un "Bearer " de más
+const clean = (v) => String(v || '').trim().replace(/^["']|["']$/g, '').replace(/^Bearer\s+/i, '').trim();
+
+// Detecta qué credencial tenemos, venga en la variable que venga:
+// - el "API Read Access Token" es un JWT largo (empieza por "eyJ") -> cabecera Authorization
+// - la "API Key" son 32 caracteres hexadecimales -> parámetro ?api_key=
+function tmdbCredential() {
+  const values = [clean(process.env.TMDB_READ_TOKEN), clean(process.env.TMDB_API_KEY)].filter(Boolean);
+  const token = values.find((v) => v.startsWith('eyJ'));
+  if (token) return { type: 'token', value: token };
+  const key = values.find((v) => /^[a-f0-9]{32}$/i.test(v));
+  if (key) return { type: 'key', value: key };
+  return values[0] ? { type: 'token', value: values[0] } : null;
+}
+
 tmdb.interceptors.request.use((config) => {
-  if (process.env.TMDB_READ_TOKEN) {
-    config.headers.Authorization = `Bearer ${process.env.TMDB_READ_TOKEN}`;
-  } else if (process.env.TMDB_API_KEY) {
-    config.params = { ...config.params, api_key: process.env.TMDB_API_KEY };
-  }
+  const cred = tmdbCredential();
+  if (cred?.type === 'token') config.headers.Authorization = `Bearer ${cred.value}`;
+  if (cred?.type === 'key') config.params = { ...config.params, api_key: cred.value };
   return config;
 });
+
+// Al arrancar, dejamos en los logs qué tipo de credencial se está usando (sin mostrarla)
+export function describeTmdbCredential() {
+  const cred = tmdbCredential();
+  if (!cred) return 'sin credencial';
+  return `${cred.type === 'token' ? 'Read Access Token' : 'API Key'} (${cred.value.length} caracteres)`;
+}
 
 const IMG = 'https://image.tmdb.org/t/p';
 

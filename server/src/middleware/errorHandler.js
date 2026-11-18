@@ -18,7 +18,10 @@ export function errorHandler(err, _req, res, _next) {
     const status = err.response?.status;
     if (status === 404) return res.status(404).json({ message: 'Película no encontrada' });
     if (status === 401) {
-      console.error('TMDB: credencial no válida. Revisa TMDB_READ_TOKEN o TMDB_API_KEY en el .env');
+      console.error(
+        'TMDB: credencial no válida. Revisa TMDB_READ_TOKEN (token largo "eyJ...") o TMDB_API_KEY ' +
+          '(32 caracteres) en server/.env o en el Environment de Render'
+      );
     } else {
       console.error('TMDB:', err.message);
     }
