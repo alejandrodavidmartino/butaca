@@ -1,6 +1,8 @@
 // Middleware final: convierte cualquier error en una respuesta JSON clara
-// eslint-disable-next-line no-unused-vars
 export function errorHandler(err, _req, res, _next) {
+  if (err.message?.startsWith('Origen no permitido por CORS')) {
+    return res.status(403).json({ message: err.message });
+  }
   // Errores de validación de Mongoose (campos obligatorios, formato…)
   if (err.name === 'ValidationError') {
     const message = Object.values(err.errors).map((e) => e.message).join('. ');

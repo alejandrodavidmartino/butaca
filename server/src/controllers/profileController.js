@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import Group from '../models/Group.js';
 import UserAvatar from '../models/UserAvatar.js';
 import WatchedMovie from '../models/WatchedMovie.js';
 import { getUserStats } from '../services/stats.js';

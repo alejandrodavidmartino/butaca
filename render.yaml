@@ -1,0 +1,29 @@
+# Configuración del backend en Render (https://render.com/docs/blueprint-spec)
+# En Render: New → Blueprint → elige este repositorio. Los secretos (sync: false) se piden al crearlo.
+services:
+  - type: web
+    name: butaca-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: MONGODB_DB
+        value: butaca
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+      - key: JWT_SECRET
+        generateValue: true # Render genera uno aleatorio y seguro
+      - key: MONGODB_URI
+        sync: false
+      - key: TMDB_READ_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CLIENT_URL
+        sync: false

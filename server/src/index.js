@@ -18,8 +18,26 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Render/Vercel ponen un proxy delante: así req.ip es la IP real del usuario (para el límite de la IA)
+app.set('trust proxy', 1);
+
+// CORS: solo el frontend puede llamar a la API. CLIENT_URL admite varias URLs separadas por comas
+// (p. ej. "https://butaca.vercel.app,http://localhost:5173")
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((u) => u.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Sin "origin" = peticiones desde el servidor, curl o la propia <img>: se permiten
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`Origen no permitido por CORS: ${origin}`));
+    },
+  })
+);
+
 // Middlewares globales
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
 app.use(express.json({ limit: '1mb' })); // 1 MB para poder subir fotos de grupo
 
 // Ruta de comprobación: sirve para saber si el servidor está vivo

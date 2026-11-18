@@ -1,19 +1,19 @@
 {
   "name": "butaca-server",
   "version": "1.0.0",
-  "description": "API REST de Butaca",
+  "description": "API REST de Butaca (Express + MongoDB + TMDB + Gemini)",
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "create-admin": "node src/scripts/createAdmin.js",
-    "seed": "node src/scripts/seed.js"
+    "seed": "node src/scripts/seed.js",
+    "lint": "eslint src"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google/genai": "^3.3.0",
     "axios": "^1.21.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
@@ -23,6 +23,9 @@
     "mongoose": "^8.24.9"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^16.5.0",
     "nodemon": "^3.1.14"
   },
   "type": "module",
@@ -32,5 +35,8 @@
       ".env"
     ],
     "ext": "js,json"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

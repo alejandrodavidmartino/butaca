@@ -1,11 +1,13 @@
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
+import ServerWakeBanner from './ServerWakeBanner';
 
 // Estructura común de la parte pública: barra arriba, contenido y pie
 export default function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
+      <ServerWakeBanner />
       <main className="flex-1">
         <Outlet />
       </main>
