@@ -1,6 +1,6 @@
 # 🎬 Butaca
 
-**Butaca** es una aplicación web Full-Stack para **decidir qué película ver en grupo**. Reúne a tus amigos, pareja o familia en un grupo, apuntad películas, dejad que **la ruleta** elija y puntuad lo que veáis. Si no sabéis por dónde empezar, **Ratatús** 🐀, nuestra mascota con IA, os recomienda según vuestro ánimo, vuestras notas y las plataformas que tenéis en casa.
+**Butaca** · Aplicación para decidir qué película ver en grupo: apuntáis pendientes, la ruleta elige solo si estáis indecisos y cada uno puntúa lo que ve. Ratatús, una mascota con IA, recomienda según vuestras notas y las plataformas que tenéis en casa.
 
 > Proyecto del Módulo Full-Stack JS · React + Node.js + MongoDB + TMDB + Google Gemini
 

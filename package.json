@@ -1,7 +1,7 @@
 {
   "name": "butaca",
   "private": true,
-  "description": "Butaca: recomendador de películas con IA (React + Node + MongoDB + TMDB + Gemini)",
+  "description": "Butaca: Aplicación para decidir qué película ver en grupo: apuntáis pendientes, la ruleta elige solo si estáis indecisos y cada uno puntúa lo que ve. Ratatús, una mascota con IA, recomienda según vuestras notas y las plataformas que tenéis en casa.",
   "scripts": {
     "install:all": "npm install --prefix server && npm install --prefix client",
     "dev": "concurrently -n server,client -c red,cyan \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
