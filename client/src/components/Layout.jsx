@@ -1,4 +1,6 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
+import Spinner from './Spinner';
 import Navbar from './Navbar';
 import ScrollToTop from './ScrollToTop';
 import ServerWakeBanner from './ServerWakeBanner';
@@ -13,7 +15,10 @@ export default function Layout() {
       <VerifyEmailBanner />
       <ServerWakeBanner />
       <main className="flex-1">
-        <Outlet />
+        {/* Mientras se descarga el código de la página, un spinner */}
+        <Suspense fallback={<Spinner />}>
+          <Outlet />
+        </Suspense>
       </main>
       <footer className="border-t border-white/5 py-8 text-center text-sm text-zinc-500">
         <p>Butaca · Proyecto del Módulo Full-Stack JS</p>

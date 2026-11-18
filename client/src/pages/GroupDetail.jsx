@@ -95,7 +95,7 @@ export default function GroupDetail() {
             <h1 className="font-display text-5xl leading-none tracking-wide">{group.name}</h1>
             {group.description && <p className="mt-1 text-zinc-400">{group.description}</p>}
             <p className="mt-1 text-sm text-zinc-500">
-              {group.members.length} miembros · {pending.length} pendientes · {watched.length} vistas
+              {group.members.length} {group.members.length === 1 ? 'miembro' : 'miembros'} · {pending.length} {pending.length === 1 ? 'pendiente' : 'pendientes'} · {watched.length} {watched.length === 1 ? 'vista' : 'vistas'}
             </p>
           </div>
         </div>
@@ -204,7 +204,7 @@ export default function GroupDetail() {
                         <>
                           <button
                             onClick={() => setRatingFor(m.tmdbId)}
-                            className="flex-1 rounded-md bg-butaca-500/15 px-2 py-1 text-xs font-medium text-red-200 hover:bg-butaca-500/25"
+                            className="flex-1 rounded-md bg-butaca-500/15 px-2 py-2 text-xs sm:py-1 font-medium text-red-200 hover:bg-butaca-500/25"
                           >
                             {(() => {
                               const mine = m.ratings.find((r) => r.user?._id === user._id);
@@ -213,7 +213,7 @@ export default function GroupDetail() {
                           </button>
                           <button
                             onClick={() => markWatched(m.tmdbId, false)}
-                            className="rounded-md bg-white/5 px-2 py-1 text-xs text-zinc-400 hover:bg-white/10"
+                            className="rounded-md bg-white/5 px-2 py-2 text-xs sm:py-1 text-zinc-400 hover:bg-white/10"
                             title="Volver a pendientes"
                             aria-label={`Marcar ${m.title} como no vista`}
                           >
@@ -223,7 +223,7 @@ export default function GroupDetail() {
                       ) : (
                         <button
                           onClick={() => markWatched(m.tmdbId, true)}
-                          className="flex-1 rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                          className="flex-1 rounded-md bg-white/5 px-2 py-2 text-xs sm:py-1 hover:bg-white/10"
                         >
                           ✓ Vista
                         </button>
@@ -234,7 +234,7 @@ export default function GroupDetail() {
                           (m.addedBy?._id === user._id || confirm(`¿Quitar «${m.title}» del grupo? La añadió @${m.addedBy?.username || 'otro miembro'}.`)) &&
                           run(() => groupsApi.removeMovie(group._id, m.tmdbId))
                         }
-                        className="rounded-md bg-white/5 px-2 py-1 text-xs text-zinc-400 hover:bg-butaca-500/20 hover:text-red-300"
+                        className="rounded-md bg-white/5 px-2 py-2 text-xs sm:py-1 text-zinc-400 hover:bg-butaca-500/20 hover:text-red-300"
                         aria-label={`Quitar ${m.title} del grupo`}
                       >
                         🗑

@@ -1,4 +1,6 @@
+import { Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import Spinner from '../components/Spinner';
 import { useAuth } from '../context/AuthContext';
 import Avatar from '../components/Avatar';
 
@@ -42,7 +44,9 @@ export default function AdminLayout() {
         </nav>
       </aside>
       <main className="min-w-0 flex-1">
-        <Outlet />
+        <Suspense fallback={<Spinner />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );

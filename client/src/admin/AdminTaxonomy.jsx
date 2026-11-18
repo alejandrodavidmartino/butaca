@@ -8,7 +8,7 @@ export default function AdminTaxonomy() {
   return (
     <>
       <AdminHeader title="Categorías y etiquetas" subtitle="Organizan las colecciones de la parte pública" />
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <CategoriesPanel />
         <TagsPanel />
       </div>

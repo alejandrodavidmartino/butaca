@@ -67,7 +67,38 @@ export default function AdminUsers() {
 
       {error && <p role="alert" className="alert-error mb-4">{error}</p>}
 
-      <div className="overflow-x-auto rounded-2xl border border-white/10 bg-telon">
+      {/* En móvil, tarjetas (una tabla de 8 columnas no cabe) */}
+      <ul className="space-y-3 md:hidden">
+        {!data && [1, 2, 3].map((i) => <li key={i} className="h-36 animate-pulse rounded-2xl bg-telon" />)}
+        {data?.items.map((u) => {
+          const isMe = u._id === me._id;
+          return (
+            <li key={u._id} className={`rounded-2xl border border-white/10 bg-telon p-4 ${busy === u._id ? 'opacity-50' : ''}`}>
+              <div className="flex items-start gap-3">
+                <Link to={`/u/${u.username}`} className="flex min-w-0 flex-1 items-center gap-3">
+                  <Avatar user={u} size="h-10 w-10 text-sm" />
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{u.name} {isMe && <span className="text-zinc-500">(tú)</span>}</span>
+                    <span className="block truncate text-xs text-zinc-500">@{u.username} · {u.email}</span>
+                  </span>
+                </Link>
+                <StatusPill active={u.active} />
+              </div>
+              <p className="mt-3 text-xs text-zinc-400">
+                Alta {formatDate(u.createdAt)} · {u.watchedCount} vistas · {u.groupCount} grupos
+              </p>
+              <EmailStatus u={u} act={act} />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <RoleSelect u={u} isMe={isMe} busy={busy} act={act} />
+                {!isMe && <UserActions u={u} act={act} />}
+              </div>
+            </li>
+          );
+        })}
+        {data?.items.length === 0 && <li className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-zinc-400">No hay usuarios con esos filtros.</li>}
+      </ul>
+
+      <div className="hidden overflow-x-auto rounded-2xl border border-white/10 bg-telon md:block">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="border-b border-white/10 text-left text-xs uppercase tracking-wider text-zinc-400">
             <tr>
@@ -101,56 +132,20 @@ export default function AdminUsers() {
                       </td>
                       <td className="px-4 py-3 text-zinc-300">
                         <span className="block">{u.email}</span>
-                        {u.emailVerified ? (
-                          <span className="text-xs text-emerald-400">✓ Correo confirmado</span>
-                        ) : (
-                          <span className="text-xs text-amber-300">
-                            ✉️ Sin confirmar ·{' '}
-                            <button onClick={() => act(u, () => updateUser(u._id, { emailVerified: true }), `¿Marcar el correo de @${u.username} como confirmado?`)} className="underline hover:text-white">
-                              verificar a mano
-                            </button>
-                          </span>
-                        )}
+                        <EmailStatus u={u} act={act} />
                       </td>
                       <td className="px-4 py-3 text-zinc-400">{formatDate(u.createdAt)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{u.watchedCount}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{u.groupCount}</td>
                       <td className="px-4 py-3">
-                        <label className="sr-only" htmlFor={`role-${u._id}`}>Rol de {u.name}</label>
-                        <select
-                          id={`role-${u._id}`}
-                          value={u.role}
-                          disabled={isMe || busy === u._id}
-                          onChange={(e) => act(u, () => updateUser(u._id, { role: e.target.value }), `¿Cambiar el rol de @${u.username} a ${e.target.value === 'admin' ? 'administrador' : 'usuario'}?`)}
-                          className="rounded-lg border border-white/10 bg-sala px-2 py-1 text-xs disabled:opacity-60"
-                        >
-                          <option value="user">Usuario</option>
-                          <option value="admin">Admin</option>
-                        </select>
+                        <RoleSelect u={u} isMe={isMe} busy={busy} act={act} />
                       </td>
                       <td className="px-4 py-3">
-                        {u.active ? (
-                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">● Activo</span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-red-500/15 px-2 py-0.5 text-xs text-red-300">⛔ Bloqueado</span>
-                        )}
+                        <StatusPill active={u.active} />
                       </td>
                       <td className="px-4 py-3">
                         {!isMe && (
-                          <div className="flex justify-end gap-1">
-                            <button
-                              onClick={() => act(u, () => updateUser(u._id, { active: !u.active }), u.active ? `¿Bloquear a @${u.username}? No podrá entrar en Butaca.` : null)}
-                              className="rounded-lg px-2 py-1 text-xs text-zinc-300 hover:bg-white/10"
-                            >
-                              {u.active ? 'Bloquear' : 'Desbloquear'}
-                            </button>
-                            <button
-                              onClick={() => act(u, () => deleteUser(u._id), `¿Borrar a @${u.username} y todos sus datos? No se puede deshacer.`)}
-                              className="rounded-lg px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
-                            >
-                              Borrar
-                            </button>
-                          </div>
+                          <div className="flex justify-end gap-1"><UserActions u={u} act={act} /></div>
                         )}
                       </td>
                     </tr>
@@ -163,6 +158,63 @@ export default function AdminUsers() {
         </table>
       </div>
       {data && <Pagination page={data.page} totalPages={data.pages} onChange={(page) => setFilters({ ...filters, page })} />}
+    </>
+  );
+}
+
+function EmailStatus({ u, act }) {
+  return u.emailVerified ? (
+    <span className="text-xs text-emerald-400">✓ Correo confirmado</span>
+  ) : (
+    <span className="text-xs text-amber-300">
+      ✉️ Sin confirmar ·{' '}
+      <button onClick={() => act(u, () => updateUser(u._id, { emailVerified: true }), `¿Marcar el correo de @${u.username} como confirmado?`)} className="underline hover:text-white">
+        verificar a mano
+      </button>
+    </span>
+  );
+}
+
+function RoleSelect({ u, isMe, busy, act }) {
+  return (
+    <>
+      <label className="sr-only" htmlFor={`role-${u._id}`}>Rol de {u.name}</label>
+      <select
+        id={`role-${u._id}`}
+        value={u.role}
+        disabled={isMe || busy === u._id}
+        onChange={(e) => act(u, () => updateUser(u._id, { role: e.target.value }), `¿Cambiar el rol de @${u.username} a ${e.target.value === 'admin' ? 'administrador' : 'usuario'}?`)}
+        className="rounded-lg border border-white/10 bg-sala px-2 py-1.5 text-xs disabled:opacity-60"
+      >
+        <option value="user">Usuario</option>
+        <option value="admin">Admin</option>
+      </select>
+    </>
+  );
+}
+
+const StatusPill = ({ active }) =>
+  active ? (
+    <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">● Activo</span>
+  ) : (
+    <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-red-500/15 px-2 py-0.5 text-xs text-red-300">⛔ Bloqueado</span>
+  );
+
+function UserActions({ u, act }) {
+  return (
+    <>
+      <button
+        onClick={() => act(u, () => updateUser(u._id, { active: !u.active }), u.active ? `¿Bloquear a @${u.username}? No podrá entrar en Butaca.` : null)}
+        className="rounded-lg px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10"
+      >
+        {u.active ? 'Bloquear' : 'Desbloquear'}
+      </button>
+      <button
+        onClick={() => act(u, () => deleteUser(u._id), `¿Borrar a @${u.username} y todos sus datos? No se puede deshacer.`)}
+        className="rounded-lg px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/10"
+      >
+        Borrar
+      </button>
     </>
   );
 }

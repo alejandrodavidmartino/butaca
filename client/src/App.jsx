@@ -1,31 +1,35 @@
+import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
-import Movies from './pages/Movies';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import MyGroups from './pages/MyGroups';
-import GroupDetail from './pages/GroupDetail';
-import JoinGroup from './pages/JoinGroup';
-import Sommelier from './pages/Sommelier';
-import MyWatched from './pages/MyWatched';
-import Profile from './pages/Profile';
-import Settings from './pages/Settings';
 import { useAuth } from './context/AuthContext';
-import MovieDetail from './pages/MovieDetail';
-import Person from './pages/Person';
-import NotFound from './pages/NotFound';
-import AdminLayout from './admin/AdminLayout';
-import AdminDashboard from './admin/AdminDashboard';
-import AdminUsers from './admin/AdminUsers';
-import AdminCollections from './admin/AdminCollections';
-import CollectionEditor from './admin/CollectionEditor';
-import AdminTaxonomy from './admin/AdminTaxonomy';
-import AdminModeration from './admin/AdminModeration';
-import Collections from './pages/Collections';
-import CollectionDetail from './pages/CollectionDetail';
-import VerifyEmail from './pages/VerifyEmail';
+
+// Cada página se descarga solo cuando se visita (code splitting).
+// La portada va incluida desde el principio porque es lo primero que se ve.
+const Movies = lazy(() => import('./pages/Movies'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const MyGroups = lazy(() => import('./pages/MyGroups'));
+const GroupDetail = lazy(() => import('./pages/GroupDetail'));
+const JoinGroup = lazy(() => import('./pages/JoinGroup'));
+const Sommelier = lazy(() => import('./pages/Sommelier'));
+const MyWatched = lazy(() => import('./pages/MyWatched'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Settings = lazy(() => import('./pages/Settings'));
+const MovieDetail = lazy(() => import('./pages/MovieDetail'));
+const Person = lazy(() => import('./pages/Person'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const AdminLayout = lazy(() => import('./admin/AdminLayout'));
+const AdminDashboard = lazy(() => import('./admin/AdminDashboard'));
+const AdminUsers = lazy(() => import('./admin/AdminUsers'));
+const AdminCollections = lazy(() => import('./admin/AdminCollections'));
+const CollectionEditor = lazy(() => import('./admin/CollectionEditor'));
+const AdminTaxonomy = lazy(() => import('./admin/AdminTaxonomy'));
+const AdminModeration = lazy(() => import('./admin/AdminModeration'));
+const Collections = lazy(() => import('./pages/Collections'));
+const CollectionDetail = lazy(() => import('./pages/CollectionDetail'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 
 export default function App() {
   return (

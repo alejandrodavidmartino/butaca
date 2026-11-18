@@ -1,0 +1,22 @@
+{
+  "name": "Butaca",
+  "short_name": "Butaca",
+  "description": "Decidid qué película ver en grupo: pendientes, ruleta, notas y las recomendaciones de Ratatús.",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f0d12",
+  "theme_color": "#0f0d12",
+  "categories": ["entertainment", "social"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Mis grupos", "url": "/grupos", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Ratatús IA", "url": "/sommelier", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

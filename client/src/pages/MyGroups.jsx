@@ -130,7 +130,7 @@ function GroupCard({ group }) {
             )}
           </div>
           <span className="text-xs text-zinc-400">
-            {group.pendingCount} pendientes · {group.moviesCount} en total
+            {group.pendingCount} {group.pendingCount === 1 ? 'pendiente' : 'pendientes'} · {group.moviesCount} en total
           </span>
         </div>
       </div>
