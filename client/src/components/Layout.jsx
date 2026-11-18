@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
+import ScrollToTop from './ScrollToTop';
 import ServerWakeBanner from './ServerWakeBanner';
 import VerifyEmailBanner from './VerifyEmailNotice';
 
@@ -7,6 +8,7 @@ import VerifyEmailBanner from './VerifyEmailNotice';
 export default function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
+      <ScrollToTop />
       <Navbar />
       <VerifyEmailBanner />
       <ServerWakeBanner />

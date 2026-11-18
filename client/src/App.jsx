@@ -14,6 +14,7 @@ import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import { useAuth } from './context/AuthContext';
 import MovieDetail from './pages/MovieDetail';
+import Person from './pages/Person';
 import NotFound from './pages/NotFound';
 import AdminLayout from './admin/AdminLayout';
 import AdminDashboard from './admin/AdminDashboard';
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/peliculas" element={<Movies />} />
         <Route path="/pelicula/:id" element={<MovieDetail />} />
+        <Route path="/persona/:id" element={<Person />} />
         <Route path="/colecciones" element={<Collections />} />
         <Route path="/colecciones/:slug" element={<CollectionDetail />} />
         <Route path="/verificar" element={<VerifyEmail />} />

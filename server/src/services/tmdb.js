@@ -135,13 +135,20 @@ export const getGenres = async () => (await get('/genre/movie/list')).genres;
 
 export async function getMovieDetail(id) {
   const m = await get(`/movie/${id}`, {
-    append_to_response: 'credits,videos,watch/providers,similar,release_dates',
-    include_video_language: 'es,en',
+    append_to_response: 'credits,videos,watch/providers,similar,recommendations,release_dates',
+    include_video_language: 'es,en,null',
   });
 
-  // Tráiler: preferimos uno en español de YouTube
-  const videos = m.videos?.results?.filter((v) => v.site === 'YouTube' && v.type === 'Trailer') || [];
-  const trailer = videos.find((v) => v.iso_639_1 === 'es') || videos[0];
+  // Vídeos de YouTube: tráileres primero, y dentro de cada tipo los que están en español
+  const TYPES = ['Trailer', 'Teaser', 'Clip', 'Featurette'];
+  const videos = (m.videos?.results || [])
+    .filter((v) => v.site === 'YouTube' && TYPES.includes(v.type))
+    .sort((a, b) =>
+      TYPES.indexOf(a.type) - TYPES.indexOf(b.type) ||
+      (b.iso_639_1 === 'es') - (a.iso_639_1 === 'es') ||
+      (b.official === true) - (a.official === true))
+    .slice(0, 8)
+    .map((v) => ({ key: v.key, name: v.name, type: v.type, lang: v.iso_639_1 }));
 
   // Dónde verla en España
   const es = m['watch/providers']?.results?.ES || {};
@@ -153,6 +160,35 @@ export async function getMovieDetail(id) {
     ?.find((r) => r.iso_3166_1 === 'ES')
     ?.release_dates.find((d) => d.certification)?.certification;
 
+  // Equipo técnico: personas (sin repetir) que tienen alguno de esos trabajos
+  const crew = m.credits?.crew || [];
+  const people = (...jobs) => {
+    const seen = new Set();
+    return crew
+      .filter((c) => jobs.includes(c.job) && !seen.has(c.id) && seen.add(c.id))
+      .map((c) => ({ id: c.id, name: c.name }));
+  };
+
+  // Si pertenece a una saga, traemos el resto de películas (también con caché)
+  let saga = null;
+  if (m.belongs_to_collection) {
+    try {
+      const c = await get(`/collection/${m.belongs_to_collection.id}`);
+      const parts = (c.parts || [])
+        .filter((p) => p.release_date)
+        .sort((a, b) => a.release_date.localeCompare(b.release_date))
+        .map(toMovieCard);
+      if (parts.length > 1) saga = { id: c.id, name: c.name, movies: parts };
+    } catch {
+      saga = null; // la saga es un extra: si falla, la ficha se muestra igual
+    }
+  }
+
+  // Recomendaciones de TMDB (o "similares" si no hay), sin repetir las de la saga, que ya tienen su fila
+  const inSaga = new Set(saga?.movies.map((p) => p.id) || []);
+  const recommendations = (m.recommendations?.results?.length ? m.recommendations.results : m.similar?.results || [])
+    .filter((r) => !inSaga.has(r.id));
+
   return {
     ...toMovieCard(m),
     originalTitle: m.original_title,
@@ -162,22 +198,77 @@ export async function getMovieDetail(id) {
     genres: m.genres,
     voteCount: m.vote_count,
     certification: cert || null,
-    directors: m.credits?.crew?.filter((c) => c.job === 'Director').map((c) => c.name) || [],
+    directors: people('Director').map((p) => p.name),
+    crew: {
+      directors: people('Director'),
+      writers: people('Screenplay', 'Writer', 'Novel', 'Story').slice(0, 4),
+      music: people('Original Music Composer', 'Music').slice(0, 2),
+      photography: people('Director of Photography').slice(0, 2),
+    },
     cast:
-      m.credits?.cast?.slice(0, 12).map((c) => ({
+      m.credits?.cast?.slice(0, 15).map((c) => ({
         id: c.id,
         name: c.name,
         character: c.character,
         photo: img(c.profile_path, 'w185'),
       })) || [],
-    trailerKey: trailer?.key || null,
+    videos,
+    trailerKey: videos[0]?.key || null,
     watch: {
       link: es.link || null,
       flatrate: providers(es.flatrate), // suscripción (Netflix, Prime…)
       rent: providers(es.rent),
       buy: providers(es.buy),
     },
-    similar: m.similar?.results?.slice(0, 12).map(toMovieCard) || [],
+    saga,
+    similar: recommendations.filter((r) => r.poster_path).slice(0, 15).map(toMovieCard),
+  };
+}
+
+// Ficha de una persona (actor, directora…) con su filmografía
+export async function getPerson(id) {
+  const p = await get(`/person/${id}`, { append_to_response: 'movie_credits' });
+
+  // TMDB a veces no tiene biografía en español: probamos en inglés
+  let biography = p.biography;
+  let biographyLang = 'es';
+  if (!biography) {
+    biography = (await get(`/person/${id}`, { language: 'en-US' })).biography || '';
+    biographyLang = 'en';
+  }
+
+  // Juntamos interpretaciones y trabajos técnicos sin repetir películas
+  const byId = new Map();
+  for (const c of p.movie_credits?.cast || []) {
+    if (!byId.has(c.id)) byId.set(c.id, { ...c, roles: [] });
+    if (c.character) byId.get(c.id).roles.push(c.character);
+  }
+  for (const c of p.movie_credits?.crew || []) {
+    if (!byId.has(c.id)) byId.set(c.id, { ...c, roles: [] });
+    const JOBS = { Director: 'Dirección', Screenplay: 'Guion', Writer: 'Guion', Producer: 'Producción', 'Original Music Composer': 'Música' };
+    if (JOBS[c.job] && !byId.get(c.id).roles.includes(JOBS[c.job])) byId.get(c.id).roles.push(JOBS[c.job]);
+  }
+  const all = [...byId.values()].filter((m) => m.poster_path && m.release_date);
+  const toCredit = (m) => ({ ...toMovieCard(m), role: m.roles.slice(0, 2).join(' · ') || null });
+
+  // "Conocido por": las más populares con bastantes votos
+  const knownFor = [...all].sort((a, b) => b.vote_count - a.vote_count).slice(0, 12).map(toCredit);
+  // Filmografía completa por fecha (la más reciente primero)
+  const movies = [...all].sort((a, b) => b.release_date.localeCompare(a.release_date)).map(toCredit);
+
+  const DEPTS = { Acting: 'Interpretación', Directing: 'Dirección', Writing: 'Guion', Sound: 'Música', Production: 'Producción', Camera: 'Fotografía' };
+  return {
+    id: p.id,
+    name: p.name,
+    photo: img(p.profile_path, 'h632'),
+    biography,
+    biographyLang,
+    birthday: p.birthday,
+    deathday: p.deathday,
+    placeOfBirth: p.place_of_birth,
+    department: DEPTS[p.known_for_department] || p.known_for_department,
+    knownFor,
+    movies,
   };
 }
 

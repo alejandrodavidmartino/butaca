@@ -18,3 +18,5 @@ export const getRandomMovie = (genre) =>
 export const getPlatforms = () => api.get('/movies/platforms').then((r) => r.data);
 
 export const getMovie = (id) => api.get(`/movies/${id}`).then((r) => r.data);
+
+export const getPerson = (id) => api.get(`/movies/person/${id}`).then((r) => r.data);

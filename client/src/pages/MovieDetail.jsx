@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import useFetch from '../hooks/useFetch';
 import { getMovie } from '../services/movies';
@@ -10,14 +10,24 @@ import AddToGroup from '../components/AddToGroup';
 import WatchedButton from '../components/WatchedButton';
 import { useAuth } from '../context/AuthContext';
 
+const VIDEO_TYPES = { Trailer: 'Tráiler', Teaser: 'Teaser', Clip: 'Escena', Featurette: 'Making of' };
+
 // Pasa minutos a "2 h 2 min"
 const formatRuntime = (min) => (min ? `${Math.floor(min / 60)} h ${min % 60} min` : null);
 
 export default function MovieDetail() {
   const { id } = useParams();
   const { data: movie, loading, error } = useFetch(() => getMovie(id), [id]);
-  const [showTrailer, setShowTrailer] = useState(false);
+  const [video, setVideo] = useState(null); // vídeo abierto en la ventana (o null)
   const { user } = useAuth();
+
+  // La ventana del vídeo se cierra con Escape
+  useEffect(() => {
+    if (!video) return;
+    const onKey = (e) => e.key === 'Escape' && setVideo(null);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [video]);
 
   if (loading) return <Spinner />;
   if (error) return <ErrorMessage message={error} />;
@@ -73,15 +83,11 @@ export default function MovieDetail() {
               {movie.overview || 'Todavía no hay sinopsis en español para esta película.'}
             </p>
 
-            {movie.directors.length > 0 && (
-              <p className="mt-4 text-sm text-zinc-400">
-                Dirección: <span className="text-zinc-200">{movie.directors.join(', ')}</span>
-              </p>
-            )}
+            <Crew crew={movie.crew} />
 
             <div className="mt-8 flex flex-wrap gap-3">
               {movie.trailerKey && (
-                <button onClick={() => setShowTrailer(true)} className="btn-primary px-5 py-3">
+                <button onClick={() => setVideo(movie.videos[0])} className="btn-primary px-5 py-3">
                   ▶ Ver tráiler
                 </button>
               )}
@@ -104,15 +110,17 @@ export default function MovieDetail() {
       {movie.cast.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-6">
           <h2 className="font-display text-3xl tracking-wide">Reparto principal</h2>
-          <ul className="mt-4 flex gap-4 overflow-x-auto pb-2">
+          <ul className="mt-4 flex snap-x gap-4 overflow-x-auto pb-2">
             {movie.cast.map((c) => (
-              <li key={c.id} className="w-28 shrink-0 text-center">
-                {c.photo ? (
-                  <img src={c.photo} alt={c.name} loading="lazy" className="mx-auto h-28 w-28 rounded-full object-cover" />
-                ) : (
-                  <div className="mx-auto grid h-28 w-28 place-items-center rounded-full bg-telon text-2xl">🎭</div>
-                )}
-                <p className="mt-2 text-sm font-medium leading-tight">{c.name}</p>
+              <li key={c.id} className="w-28 shrink-0 snap-start text-center">
+                <Link to={`/persona/${c.id}`} className="group block">
+                  {c.photo ? (
+                    <img src={c.photo} alt={c.name} loading="lazy" className="mx-auto h-28 w-28 rounded-full object-cover ring-2 ring-transparent transition group-hover:ring-butaca-500" />
+                  ) : (
+                    <div className="mx-auto grid h-28 w-28 place-items-center rounded-full bg-telon text-2xl ring-2 ring-transparent transition group-hover:ring-butaca-500">🎭</div>
+                  )}
+                  <p className="mt-2 text-sm font-medium leading-tight group-hover:text-butaca-500">{c.name}</p>
+                </Link>
                 <p className="text-xs text-zinc-500">{c.character}</p>
               </li>
             ))}
@@ -120,26 +128,52 @@ export default function MovieDetail() {
         </section>
       )}
 
+      {/* ---------- Vídeos ---------- */}
+      {movie.videos.length > 1 && (
+        <section className="mx-auto max-w-7xl px-4 py-6">
+          <h2 className="font-display text-3xl tracking-wide">Tráileres y vídeos</h2>
+          <ul className="mt-4 flex snap-x gap-4 overflow-x-auto pb-2">
+            {movie.videos.map((v) => (
+              <li key={v.key} className="w-64 shrink-0 snap-start sm:w-72">
+                <button onClick={() => setVideo(v)} className="group block w-full text-left">
+                  <span className="relative block aspect-video overflow-hidden rounded-xl bg-telon ring-1 ring-white/10 group-hover:ring-butaca-500/60">
+                    <img src={`https://i.ytimg.com/vi/${v.key}/mqdefault.jpg`} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                    <span className="absolute inset-0 grid place-items-center bg-black/30 transition group-hover:bg-black/10">
+                      <span className="grid h-12 w-12 place-items-center rounded-full bg-butaca-500/90 pl-1 text-lg shadow-lg">▶</span>
+                    </span>
+                    <span className="absolute left-2 top-2 rounded bg-black/75 px-1.5 py-0.5 text-[11px] uppercase tracking-wider">
+                      {VIDEO_TYPES[v.type] || v.type}{v.lang === 'es' ? ' · ES' : v.lang === 'en' ? ' · VO' : ''}
+                    </span>
+                  </span>
+                  <span className="mt-2 line-clamp-2 block text-sm text-zinc-300 group-hover:text-white">{v.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {movie.saga && <MovieRow title={movie.saga.name} movies={movie.saga.movies} />}
       {movie.similar.length > 0 && <MovieRow title="Si te gusta, prueba con…" movies={movie.similar} />}
 
       {/* ---------- Ventana del tráiler ---------- */}
-      {showTrailer && (
+      {video && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-4"
-          onClick={() => setShowTrailer(false)}
+          onClick={() => setVideo(null)}
           role="dialog"
           aria-modal="true"
-          aria-label={`Tráiler de ${movie.title}`}
+          aria-label={video.name}
         >
           <div className="w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setShowTrailer(false)} className="mb-2 ml-auto block text-sm text-zinc-300 hover:text-white">
+            <button onClick={() => setVideo(null)} className="mb-2 ml-auto block text-sm text-zinc-300 hover:text-white">
               Cerrar ✕
             </button>
             <div className="aspect-video overflow-hidden rounded-xl">
               <iframe
                 className="h-full w-full"
-                src={`https://www.youtube-nocookie.com/embed/${movie.trailerKey}?autoplay=1`}
-                title={`Tráiler de ${movie.title}`}
+                src={`https://www.youtube-nocookie.com/embed/${video.key}?autoplay=1`}
+                title={video.name}
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
               />
@@ -176,5 +210,34 @@ function WatchProviders({ watch }) {
       ))}
       <p className="text-xs text-zinc-500">Datos de disponibilidad: JustWatch</p>
     </div>
+  );
+}
+
+// Dirección, guion, música y fotografía (cada nombre lleva a su ficha)
+function Crew({ crew }) {
+  const rows = [
+    ['Dirección', crew.directors],
+    ['Guion', crew.writers],
+    ['Música', crew.music],
+    ['Fotografía', crew.photography],
+  ].filter(([, people]) => people.length > 0);
+  if (rows.length === 0) return null;
+
+  return (
+    <dl className="mt-5 grid max-w-3xl gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+      {rows.map(([label, people]) => (
+        <div key={label} className="flex gap-2">
+          <dt className="w-20 shrink-0 text-zinc-500">{label}</dt>
+          <dd className="text-zinc-200">
+            {people.map((p, i) => (
+              <span key={p.id}>
+                {i > 0 && ', '}
+                <Link to={`/persona/${p.id}`} className="hover:text-butaca-500 hover:underline">{p.name}</Link>
+              </span>
+            ))}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }

@@ -50,3 +50,10 @@ export async function platforms(_req, res) {
 export async function random(req, res) {
   res.json(await tmdb.randomGoodMovie(parseInt(req.query.genre) || undefined));
 }
+
+// GET /api/movies/person/:id  -> actor, directora… con su filmografía
+export async function person(req, res) {
+  const id = parseInt(req.params.id);
+  if (!id) throw new HttpError(400, 'Identificador no válido');
+  res.json(await tmdb.getPerson(id));
+}
