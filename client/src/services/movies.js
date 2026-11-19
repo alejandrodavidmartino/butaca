@@ -20,3 +20,5 @@ export const getPlatforms = () => api.get('/movies/platforms').then((r) => r.dat
 export const getMovie = (id) => api.get(`/movies/${id}`).then((r) => r.data);
 
 export const getPerson = (id) => api.get(`/movies/person/${id}`).then((r) => r.data);
+
+export const getMovieReviews = (id, params) => api.get(`/movies/${id}/reviews`, { params }).then((r) => r.data);

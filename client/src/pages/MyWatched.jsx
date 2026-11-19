@@ -45,7 +45,7 @@ export default function MyWatched() {
     <section className="mx-auto max-w-7xl px-4 py-10">
       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-butaca-500">Tu diario de cine</p>
       <h1 className="font-display text-5xl tracking-wide">Mis vistas</h1>
-      <p className="text-zinc-400">Todo lo que has visto, {user.name.split(' ')[0]}, con tus notas. Solo lo ves tú.</p>
+      <p className="text-zinc-400">Todo lo que has visto, {user.name.split(' ')[0]}, con tus notas. Es privado, salvo las reseñas que decidas publicar en la ficha de cada película.</p>
 
       {/* ---------- Estadísticas ---------- */}
       {stats && stats.count > 0 && (

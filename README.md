@@ -54,7 +54,9 @@ Elegir película en grupo suele llevar más tiempo que verla. Butaca está pensa
 ### Parte pública (cualquier visitante)
 - **Portada** con escaparate de tendencias (fondo con fundido cruzado) y **carruseles con foco** (arrastre con inercia, bucle infinito, teclado y flechas).
 - **Catálogo** con buscador, filtros por género, ordenación y paginación (el estado vive en la URL).
-- **Ficha de película**: sinopsis, reparto, tráiler, películas similares y **dónde verla en España** (suscripción, alquiler o compra).
+- **Ficha de película**: sinopsis, equipo técnico, reparto, tráileres y vídeos, saga, recomendaciones y **dónde verla en España** (suscripción, alquiler o compra).
+- **Valoraciones de Butaca** en cada ficha: nota media de los usuarios, reparto de notas del 1 al 10 y **reseñas públicas** (con aviso de spoilers y orden por fecha o nota).
+- **Fichas de actores y directores** con biografía y filmografía.
 - **Colecciones** temáticas creadas por el equipo (Ciclo de terror, Clásicos de los 80…), filtrables por categoría y etiqueta.
 - Botón **🎲 Sorpréndeme** para una película bien valorada al azar.
 
@@ -63,7 +65,8 @@ Elegir película en grupo suele llevar más tiempo que verla. Butaca está pensa
 - **Grupos**: crear (con foto personalizada), invitar por `@usuario` o con código/enlace, añadir películas, quitar, marcar como vistas.
 - **Ruleta** tipo carrusel que frena poco a poco y elige una película pendiente (con filtros de duración y género) 🎉.
 - **Puntuaciones del grupo** (1-10 + comentario): nota media, nota de cada miembro y ranking del grupo.
-- **Mis vistas**: diario personal con notas, comentarios privados, fechas y estadísticas.
+- **Mis vistas**: diario personal con notas, reseñas, fechas y estadísticas. Cada reseña puede publicarse en la ficha o quedarse privada (la nota cuenta en la media de forma anónima).
+- **Historial de cada grupo**: quién añadió, vio o puntuó qué, y qué eligió la ruleta.
 - **Ratatús IA** 🐀: sommelier de cine conversacional y recomendaciones para cada grupo.
 - **Mis plataformas**: Ratatús solo recomienda lo que puedes ver en tus suscripciones.
 - **Perfil público** (`/u/usuario`): foto, bio, estadísticas, top 3, géneros favoritos y "perfil cinéfilo" escrito por Ratatús. Se puede hacer privado.
@@ -74,7 +77,7 @@ Elegir película en grupo suele llevar más tiempo que verla. Butaca está pensa
 - **Usuarios**: buscar, filtrar, cambiar rol, bloquear/desbloquear y borrar.
 - **Colecciones (contenido)**: crear, editar y borrar; película por película desde TMDB con nota del editor, orden, borrador/publicada y destacada en portada.
 - **Categorías y etiquetas**: CRUD completo.
-- **Moderación** de comentarios y de grupos.
+- **Moderación** de reseñas públicas (ocultar/mostrar), comentarios de grupos y grupos.
 
 ---
 
@@ -138,7 +141,8 @@ Elegir película en grupo suele llevar más tiempo que verla. Butaca está pensa
 |---|---|
 | `users` | Cuenta, rol (`user`/`admin`), bio, privacidad, plataformas, perfil cinéfilo |
 | `groups` | Miembros, código de invitación y **películas embebidas** con sus **puntuaciones** embebidas |
-| `watchedmovies` | Diario personal (índice único usuario + película) |
+| `watchedmovies` | Diario personal y reseñas (índice único usuario + película; `reviewPublic` decide si sale en la ficha) |
+| `groupactivities` | Historial de cada grupo (se borra solo al año con un índice TTL) |
 | `collections` | Colecciones del Back-Office con sus películas, categoría y etiquetas |
 | `categories`, `tags` | Organización de las colecciones |
 | `groupimages`, `useravatars` | Fotos (en colecciones aparte para no "engordar" las consultas) |
@@ -300,13 +304,14 @@ Todas las rutas empiezan por `/api`. 🔒 = requiere sesión · 🛠 = requiere 
 |---|---|
 | **Estado** | `GET /health` · `GET /health/tmdb` |
 | **Auth** | `POST /auth/register` · `POST /auth/login` · `POST /auth/verify-email` · 🔒 `POST /auth/resend-verification` · 🔒 `GET/PATCH/DELETE /auth/me` · 🔒 `PATCH /auth/me/password` · 🔒 `PUT/DELETE /auth/me/avatar` |
-| **Películas** (TMDB) | `GET /movies/list/:lista` · `GET /movies/search` · `GET /movies/discover` · `GET /movies/genres` · `GET /movies/platforms` · `GET /movies/random` · `GET /movies/:id` |
-| **Grupos** 🔒 | `GET/POST /groups` · `POST /groups/join` · `GET/PATCH/DELETE /groups/:id` · miembros, películas, puntuaciones (`PUT /groups/:id/movies/:tmdbId/rating`), ruleta (`GET /groups/:id/random`) y foto |
+| **Películas** (TMDB) | `GET /movies/list/:lista` · `GET /movies/search` · `GET /movies/discover` · `GET /movies/genres` · `GET /movies/platforms` · `GET /movies/random` · `GET /movies/:id` · `GET /movies/person/:id` |
+| **Reseñas** | `GET /movies/:id/reviews` (nota media de Butaca, reparto de notas y reseñas públicas) |
+| **Grupos** 🔒 | `GET/POST /groups` · `POST /groups/join` · `GET/PATCH/DELETE /groups/:id` · miembros, películas, puntuaciones (`PUT /groups/:id/movies/:tmdbId/rating`), ruleta (`GET /groups/:id/random`), historial (`GET /groups/:id/activity`) y foto |
 | **Mis vistas** 🔒 | `GET /me/watched` · `GET /me/watched/stats` · `GET/PUT/DELETE /me/watched/:tmdbId` |
 | **Usuarios** | 🔒 `GET /users/search` · 🔒 `GET /users/:username/profile` · `GET /users/:id/avatar` · 🔒 `POST /users/me/taste` |
 | **IA** 🔒 | `POST /ai/sommelier` · `POST /ai/groups/:id/recommend` |
 | **Colecciones** (públicas) | `GET /collections` · `GET /collections/categories` · `GET /collections/:slug` |
-| **Back-Office** 🛠 | `GET /admin/stats` · usuarios, categorías, etiquetas, colecciones, grupos y comentarios (`/admin/...`) |
+| **Back-Office** 🛠 | `GET /admin/stats` · usuarios, categorías, etiquetas, colecciones, grupos, comentarios y reseñas (`/admin/...`) |
 
 ---
 

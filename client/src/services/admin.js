@@ -34,3 +34,7 @@ export const deleteComment = (groupId, ratingId) => api.delete(`/admin/comments/
 export const getPublicCollections = (params) => api.get('/collections', { params }).then(data);
 export const getPublicCollection = (slug) => api.get(`/collections/${slug}`).then(data);
 export const getCollectionCategories = () => api.get('/collections/categories').then(data);
+
+// Reseñas públicas de las fichas
+export const getReviews = (params) => api.get('/admin/reviews', { params }).then(data);
+export const moderateReview = (id, hidden) => api.patch(`/admin/reviews/${id}`, { hidden }).then(data);

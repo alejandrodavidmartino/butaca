@@ -5,7 +5,7 @@ import { getUserStats } from '../services/stats.js';
 
 // Crea o actualiza una película en el diario del usuario.
 // La usamos desde la API y también desde los grupos (al puntuar allí).
-export async function upsertWatched(userId, tmdbId, { score, comment, watchedAt } = {}, { onlyIfMissing = false } = {}) {
+export async function upsertWatched(userId, tmdbId, { score, comment, watchedAt, reviewPublic, spoiler } = {}, { onlyIfMissing = false } = {}) {
   let entry = await WatchedMovie.findOne({ user: userId, tmdbId });
   if (entry && onlyIfMissing) return entry;
 
@@ -22,7 +22,9 @@ export async function upsertWatched(userId, tmdbId, { score, comment, watchedAt 
     });
   }
   if (score !== undefined) entry.score = score === null || score === '' ? undefined : Number(score);
-  if (comment !== undefined) entry.comment = String(comment).slice(0, 280);
+  if (comment !== undefined) entry.comment = String(comment).slice(0, 1000);
+  if (reviewPublic !== undefined) entry.reviewPublic = Boolean(reviewPublic);
+  if (spoiler !== undefined) entry.spoiler = Boolean(spoiler);
   if (watchedAt) {
     const date = new Date(watchedAt);
     if (Number.isNaN(date.getTime()) || date > new Date()) throw new HttpError(400, 'La fecha no es válida');
@@ -65,12 +67,12 @@ export async function getWatched(req, res) {
   res.json(entry); // null si no la ha visto
 }
 
-// PUT /api/me/watched/:tmdbId  { score?, comment?, watchedAt? }
+// PUT /api/me/watched/:tmdbId  { score?, comment?, watchedAt?, reviewPublic?, spoiler? }
 export async function saveWatched(req, res) {
   const tmdbId = parseInt(req.params.tmdbId);
   if (!tmdbId) throw new HttpError(400, 'Película no válida');
-  const { score, comment, watchedAt } = req.body;
-  res.json(await upsertWatched(req.user._id, tmdbId, { score, comment, watchedAt }));
+  const { score, comment, watchedAt, reviewPublic, spoiler } = req.body;
+  res.json(await upsertWatched(req.user._id, tmdbId, { score, comment, watchedAt, reviewPublic, spoiler }));
 }
 
 // DELETE /api/me/watched/:tmdbId

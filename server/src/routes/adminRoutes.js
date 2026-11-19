@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { listReviewsAdmin, moderateReview } from '../controllers/reviewController.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import * as a from '../controllers/adminController.js';
 
@@ -30,6 +31,8 @@ router.delete('/collections/:id', a.deleteCollection);
 
 router.get('/groups', a.listGroups);
 router.delete('/groups/:id', a.deleteGroupAdmin);
+router.get('/reviews', listReviewsAdmin);
+router.patch('/reviews/:id', moderateReview);
 router.get('/comments', a.listComments);
 router.delete('/comments/:groupId/:ratingId', a.deleteComment);
 

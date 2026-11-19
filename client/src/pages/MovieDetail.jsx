@@ -8,6 +8,9 @@ import MovieRow from '../components/MovieRow';
 import Rating from '../components/Rating';
 import AddToGroup from '../components/AddToGroup';
 import WatchedButton from '../components/WatchedButton';
+import WatchedModal from '../components/WatchedModal';
+import MovieReviews from '../components/MovieReviews';
+import { getWatchedEntry } from '../services/watched';
 import { useAuth } from '../context/AuthContext';
 
 const VIDEO_TYPES = { Trailer: 'Tráiler', Teaser: 'Teaser', Clip: 'Escena', Featurette: 'Making of' };
@@ -20,6 +23,15 @@ export default function MovieDetail() {
   const { data: movie, loading, error } = useFetch(() => getMovie(id), [id]);
   const [video, setVideo] = useState(null); // vídeo abierto en la ventana (o null)
   const { user } = useAuth();
+  // Mi entrada en «Mis vistas» (undefined = cargando, null = no la he visto).
+  // La comparten el botón «La he visto» y la sección de reseñas.
+  const [entry, setEntry] = useState(undefined);
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    setEntry(user ? undefined : null);
+    if (user) getWatchedEntry(id).then(setEntry).catch(() => setEntry(null));
+  }, [id, user]);
 
   // La ventana del vídeo se cierra con Escape
   useEffect(() => {
@@ -91,7 +103,7 @@ export default function MovieDetail() {
                   ▶ Ver tráiler
                 </button>
               )}
-              {user && <WatchedButton movie={movie} />}
+              {user && <WatchedButton entry={entry} onOpen={() => setEditing(true)} />}
               {user ? (
                 <AddToGroup tmdbId={movie.id} />
               ) : (
@@ -128,6 +140,9 @@ export default function MovieDetail() {
         </section>
       )}
 
+      {/* ---------- Valoraciones y reseñas de los usuarios ---------- */}
+      <MovieReviews tmdbId={movie.id} me={user} myEntry={entry} onWrite={() => setEditing(true)} />
+
       {/* ---------- Vídeos ---------- */}
       {movie.videos.length > 1 && (
         <section className="mx-auto max-w-7xl px-4 py-6">
@@ -155,6 +170,16 @@ export default function MovieDetail() {
 
       {movie.saga && <MovieRow title={movie.saga.name} movies={movie.saga.movies} />}
       {movie.similar.length > 0 && <MovieRow title="Si te gusta, prueba con…" movies={movie.similar} />}
+
+      {editing && (
+        <WatchedModal
+          movie={{ tmdbId: movie.id, title: movie.title, poster: movie.poster, year: movie.year }}
+          entry={entry}
+          onSaved={setEntry}
+          onDeleted={() => setEntry(null)}
+          onClose={() => setEditing(false)}
+        />
+      )}
 
       {/* ---------- Ventana del tráiler ---------- */}
       {video && (

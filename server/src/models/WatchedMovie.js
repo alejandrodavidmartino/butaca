@@ -17,7 +17,12 @@ const watchedMovieSchema = new mongoose.Schema(
       max: [10, 'La nota máxima es 10'],
       validate: { validator: (v) => v == null || Number.isInteger(v), message: 'La nota debe ser un número entero' },
     },
-    comment: { type: String, trim: true, maxlength: [280, 'El comentario puede tener 280 caracteres'], default: '' },
+    comment: { type: String, trim: true, maxlength: [1000, 'La reseña puede tener 1000 caracteres'], default: '' },
+    // Reseña pública: si es true, la nota y el comentario salen en la ficha de la película.
+    // Por defecto false: el diario es privado salvo que el usuario decida publicarla.
+    reviewPublic: { type: Boolean, default: false },
+    spoiler: { type: Boolean, default: false }, // el comentario cuenta algo de la trama -> se oculta hasta pulsar
+    hiddenByAdmin: { type: Boolean, default: false }, // moderación: deja de mostrarse en la ficha
     watchedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
@@ -25,5 +30,7 @@ const watchedMovieSchema = new mongoose.Schema(
 
 // Un usuario solo puede tener cada película una vez en su diario
 watchedMovieSchema.index({ user: 1, tmdbId: 1 }, { unique: true });
+// Para las reseñas y notas de una película
+watchedMovieSchema.index({ tmdbId: 1, reviewPublic: 1, updatedAt: -1 });
 
 export default mongoose.model('WatchedMovie', watchedMovieSchema);

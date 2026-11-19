@@ -11,6 +11,9 @@ const today = () => new Date().toISOString().slice(0, 10);
 export default function WatchedModal({ movie, entry, onSaved, onDeleted, onClose }) {
   const [score, setScore] = useState(entry?.score ?? null);
   const [comment, setComment] = useState(entry?.comment || '');
+  // Las vistas nuevas se publican por defecto (se ve claro en la casilla); las que ya existían, como estuvieran
+  const [reviewPublic, setReviewPublic] = useState(entry ? Boolean(entry.reviewPublic) : true);
+  const [spoiler, setSpoiler] = useState(Boolean(entry?.spoiler));
   const [date, setDate] = useState(entry?.watchedAt ? entry.watchedAt.slice(0, 10) : today());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -20,7 +23,7 @@ export default function WatchedModal({ movie, entry, onSaved, onDeleted, onClose
     setSaving(true);
     setError('');
     try {
-      onSaved(await saveWatched(movie.tmdbId, { score, comment: comment.trim(), watchedAt: date }));
+      onSaved(await saveWatched(movie.tmdbId, { score, comment: comment.trim(), watchedAt: date, reviewPublic, spoiler: spoiler && Boolean(comment.trim()) }));
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -55,10 +58,32 @@ export default function WatchedModal({ movie, entry, onSaved, onDeleted, onClose
         <p className="mt-6 text-sm font-semibold">Tu nota <span className="font-normal text-zinc-500">(opcional)</span></p>
         <div className="mt-2"><ScorePicker value={score} onChange={setScore} /></div>
 
-        <label htmlFor="wcomment" className="mt-2 block text-sm text-zinc-400">Comentario (opcional)</label>
-        <textarea id="wcomment" rows={2} maxLength={280} value={comment} onChange={(e) => setComment(e.target.value)}
-          placeholder="¿Qué te ha parecido? Es tu diario, nadie más lo ve" className="input mt-1 resize-none" />
-        <p className="text-right text-xs text-zinc-500">{comment.length}/280</p>
+        <label htmlFor="wcomment" className="mt-2 block text-sm text-zinc-400">Tu reseña (opcional)</label>
+        <textarea id="wcomment" rows={3} maxLength={1000} value={comment} onChange={(e) => setComment(e.target.value)}
+          placeholder={reviewPublic ? '¿Qué te ha parecido? Otros usuarios podrán leerlo en la ficha' : '¿Qué te ha parecido? Solo lo verás tú'}
+          className="input mt-1 resize-y" />
+        <p className="text-right text-xs text-zinc-500">{comment.length}/1000</p>
+
+        <div className="mt-1 space-y-2 rounded-xl bg-white/5 p-3 text-sm">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input type="checkbox" checked={reviewPublic} onChange={(e) => setReviewPublic(e.target.checked)} className="mt-0.5 h-4 w-4 accent-butaca-500" />
+            <span>
+              <span className="font-medium">🌍 Publicar mi reseña en la ficha de la película</span>
+              <span className="block text-xs text-zinc-400">
+                {reviewPublic ? 'Tu nombre, tu nota y tu comentario serán visibles para todos.' : 'Solo la verás tú. Tu nota cuenta en la media de Butaca de forma anónima.'}
+              </span>
+            </span>
+          </label>
+          {reviewPublic && comment.trim() && (
+            <label className="flex cursor-pointer items-start gap-3">
+              <input type="checkbox" checked={spoiler} onChange={(e) => setSpoiler(e.target.checked)} className="mt-0.5 h-4 w-4 accent-butaca-500" />
+              <span>
+                <span className="font-medium">⚠️ Contiene spoilers</span>
+                <span className="block text-xs text-zinc-400">Se ocultará hasta que el lector pulse para verla.</span>
+              </span>
+            </label>
+          )}
+        </div>
 
         {error && <p role="alert" className="alert-error mt-2">{error}</p>}
         <div className="mt-4 flex flex-wrap justify-between gap-2">
